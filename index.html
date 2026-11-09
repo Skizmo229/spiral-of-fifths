@@ -376,8 +376,8 @@
 
   <h3>Controls</h3>
   <ul>
-    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths.</li>
-    <li><b>Instrument</b>, in the bottom bar: the sound notes are played with. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above stay pure tones.</li>
+    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths. With Auto-play on, jumps sound only the note you land on.</li>
+    <li><b>Instrument</b>, in the bottom bar: the sound notes are played with. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
     <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
@@ -544,7 +544,7 @@ const S = {
   mag: 1, magT: 1,
   sel: 0, hover: null,
   fly: 0,
-  autoplay: false, userDriven: false, lastK: 0, barber: false,
+  autoplay: false, userDriven: false, lastK: 0, barber: false, jumping: false,
   lens: 'note',
   pulses: [],
 };
@@ -849,6 +849,7 @@ function draw(now) {
    because this page is about hearing small differences in tuning. A layer is one waveform; a layer's
    `fade` makes it die away by itself, which is what gives struck and plucked sounds their bite. */
 const harmonics = (n, f) => Array.from({ length: n }, (_, i) => f(i + 1));
+const TONE_ENV = { pure: true, attack: 0.02, sustain: 0.8, decay: 0.4, release: 0.1 };
 const INSTRUMENTS = [
   { id: 'keys', name: 'Soft keys', attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1,
     layers: [{ amps: harmonics(11, h => h ** -1.6 * (h % 2 ? 1 : 0.75)) }] },
@@ -871,8 +872,14 @@ const INSTRUMENTS = [
     layers: [{ amps: harmonics(15, h => h % 2 ? 1 / h : 0.04 / h) }] },
   { id: 'brass', name: 'Brass', attack: 0.045, sustain: 0.8, decay: 0.35, release: 0.09, level: 1.68,
     layers: [{ amps: harmonics(16, h => h ** -0.8 * (h === 1 ? 0.6 : 1)) }] },
-  { id: 'sine', name: 'Pure tone', attack: 0.02, sustain: 0.8, decay: 0.4, release: 0.1, level: 1,
-    layers: [{ amps: [1] }] },
+  // Levels even out loudness: the ear hears the upper harmonics of a square or sawtooth more strongly.
+  { ...TONE_ENV, id: 'sine', name: 'Sine', level: 1, layers: [{ amps: [1] }] },
+  { ...TONE_ENV, id: 'triangle', name: 'Triangle', level: 1.19,
+    layers: [{ amps: harmonics(47, h => h % 2 ? (h % 4 === 1 ? 1 : -1) / (h * h) : 0) }] },
+  { ...TONE_ENV, id: 'square', name: 'Square', level: 0.59,
+    layers: [{ amps: harmonics(47, h => h % 2 ? 1 / h : 0) }] },
+  { ...TONE_ENV, id: 'saw', name: 'Sawtooth', level: 0.87,
+    layers: [{ amps: harmonics(48, h => 1 / h) }] },
 ];
 // The harmonic-series buttons always use this, whichever instrument is chosen.
 const SINE = { attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1, layers: [{ amps: [1] }] };
@@ -1592,7 +1599,10 @@ function setInstrument(id) {
   $('instrument').value = instrument.id;
   save();
 }
-$('instrument').innerHTML = INSTRUMENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+const instrumentGroup = (label, list) =>
+  `<optgroup label="${label}">${list.map(i => `<option value="${i.id}">${i.name}</option>`).join('')}</optgroup>`;
+$('instrument').innerHTML = instrumentGroup('Instruments', INSTRUMENTS.filter(i => !i.pure))
+                          + instrumentGroup('Pure tones', INSTRUMENTS.filter(i => i.pure));
 let instByMouse = false;       // after picking with the mouse, let go so the arrow keys move the spiral again
 $('instrument').addEventListener('pointerdown', () => { instByMouse = true; });
 $('instrument').addEventListener('keydown', () => { instByMouse = false; });
@@ -1724,11 +1734,20 @@ resize();
 if (innerWidth < 760) setExplore(false);
 
 /* ---------- input: wheel, drag, pinch, click, keys ---------- */
-function userMove() { stopFly(); S.zRate = 14; S.userDriven = true; }
+function userMove() {
+  if (S.jumping) { S.z = S.zT; S.lastK = Math.round(S.z); S.jumping = false; }   // finish any jump first
+  stopFly(); S.zRate = 14; S.userDriven = true;
+}
 function stepBy(n) { S.zT = Math.round(S.zT) + n; }   // land exactly on a note
 // The note you've moved to. In a closed tuning that's the plainest name for that key, as a click gives.
 function noteHere() { const k = Math.round(S.zT); return S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k; }
 function keyStep(n) { userMove(); stepBy(n); if (!S.autoplay) select(noteHere(), false, false); }   // auto-play selects as it goes
+// A jump glides past the notes between, so auto-play sounds only the one it lands on.
+function keyJump(n) {
+  userMove(); stepBy(n); S.jumping = true;
+  select(noteHere(), false, false);
+  if (S.autoplay) playNote(noteHere());
+}
 
 // Mouse wheel: exactly one fifth per notch (the smallest notch-sized delta seen counts as one notch;
 // bigger deltas are several merged). Trackpads send tiny deltas: one fifth per 60 px of swiping.
@@ -1842,12 +1861,11 @@ addEventListener('keydown', e => {
     e.preventDefault(); setLens(t.dataset.tab); t.focus();
     return;
   }
-  const step = e.shiftKey ? tune.lap : 1;
   switch (e.key) {
-    case 'ArrowRight': keyStep(step); break;
-    case 'ArrowLeft':  keyStep(-step); break;
-    case 'ArrowUp':    keyStep(12); break;
-    case 'ArrowDown':  keyStep(-12); break;
+    case 'ArrowRight': if (e.shiftKey) keyJump(tune.lap); else keyStep(1); break;
+    case 'ArrowLeft':  if (e.shiftKey) keyJump(-tune.lap); else keyStep(-1); break;
+    case 'ArrowUp':    keyJump(12); break;
+    case 'ArrowDown':  keyJump(-12); break;
     case 'Enter': case ' ':
       if (e.target !== cv && e.target !== document.body) return;
       e.preventDefault(); onNoteClick(noteHere());
@@ -1878,7 +1896,7 @@ function frame(now) {
   const dt = Math.min(0.25, (now - last) / 1000); last = now;
   if (S.fly) { S.z += S.fly * FLY_RATE * dt; S.zT = S.z; }   // straight along, at one steady speed
   let dz = (S.zT - S.z) * (1 - Math.exp(-dt * S.zRate));
-  if (S.autoplay && S.userDriven) {
+  if (S.autoplay && S.userDriven && !S.jumping) {
     const zr = Math.round(S.z);
     S.zT = clamp(S.zT, zr - AUTO_BACKLOG, zr + AUTO_BACKLOG);
     const capz = AUTO_RATE * dt;
@@ -1894,12 +1912,13 @@ function frame(now) {
 
   const kNow = Math.round(S.z);
   if (kNow !== S.lastK) {
-    if (S.autoplay && S.userDriven) {
+    if (S.autoplay && S.userDriven && !S.jumping) {
       const dir = Math.sign(kNow - S.lastK), n = Math.abs(kNow - S.lastK);
       for (let i = 1; i <= n; i++) autoNote(S.lastK + dir * i, dir, (i - 1) / AUTO_RATE);
     }
     S.lastK = kNow;
   }
+  if (S.jumping && S.z === S.zT) S.jumping = false;
   R0 = homeRadius();
   draw(now);
   updateDepth();
