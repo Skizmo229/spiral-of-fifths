@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Circle of Fifths Is a Spiral</title>
+<meta name="description" content="Stack pure fifths from C and you never get back to C. A playable spiral of fifths: hear the Pythagorean comma and explore keys, intervals, chords and tunings.">
+<meta name="theme-color" content="#06070d">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Circle of Fifths Is a Spiral">
+<meta property="og:description" content="Stack pure fifths from C and you never get back to C. A playable spiral of fifths: hear the Pythagorean comma and explore keys, intervals, chords and tunings.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2306070d'/%3E%3Cpath d='M15.4 18.1a2.6 2.6 0 0 1-5.2 0a4.4 4.4 0 0 1 8.8 0a7.2 7.2 0 0 1-14.4 0a11.4 11.4 0 0 1 22.8 0' fill='none' stroke='%23f2c46d' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --panel: rgba(14,15,28,.78);
+    --border: rgba(255,255,255,.085);
+    --text:#ebe7db; --muted:#9d9aab; --gold:#f2c46d;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Segoe UI Symbol","Noto Music","Apple Symbols",sans-serif;
+    --sym:"Segoe UI Symbol","Noto Music","Apple Symbols","Arial Unicode MS",sans-serif;
+    --ctl-h: 64px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#06070d;color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #cv.drag{cursor:grabbing} #cv.point{cursor:pointer}
+  #cv:focus{outline:none}
+  #cv:focus-visible{outline:2px solid rgba(242,196,109,.6);outline-offset:-3px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .panel{position:fixed;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  .acc{font-family:var(--sym);font-weight:400}
+  sup{font-size:.55em;font-weight:700;margin-left:.04em;line-height:0}
+  .dim{color:var(--muted)}
+  #exploreBtn{display:none}
+  body.exp-closed #exploreBtn{display:inline-block}
+  #explore.closed{display:none}
+  .mini{position:absolute;top:8px;right:8px;width:26px;height:26px;padding:0;border-radius:8px;font-size:15px;line-height:1;color:var(--muted)}
+  #intro.min p,#intro.min .legend,#intro.min #hint{display:none}
+  #intro.min h1{padding-right:30px}
+  #intro.min #depth{margin-top:8px}
+  #noteTip{position:fixed;left:0;top:0;pointer-events:none;z-index:6;padding:6px 10px;font-size:12px;line-height:1.35;
+    background:rgba(8,9,18,.94);border:1px solid rgba(255,255,255,.14);border-radius:9px;opacity:0;transition:opacity .12s;white-space:nowrap}
+  #noteTip b{font-family:var(--serif);font-size:16px;font-weight:600}
+  #noteTip.show{opacity:1}
+
+  /* intro */
+  #intro{top:16px;left:16px;width:340px;padding:16px 18px 14px}
+  h1{font-family:var(--serif);font-weight:600;font-size:23px;line-height:1.15;margin:0 0 8px;letter-spacing:.2px}
+  #intro p{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:#cdc9d8}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #hint{font-size:12px;color:var(--muted);line-height:1.4;flex:1;min-width:150px}
+  #depth{margin-top:10px;font-size:12.5px;color:#cdc9d8;font-variant-numeric:tabular-nums;min-height:1.4em}
+  .legend{margin-top:8px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+  .legend .bar{flex:1;height:7px;border-radius:4px;
+    background:linear-gradient(90deg,hsl(212,85%,60%),hsl(212,60%,76%),#efe8d6,hsl(30,60%,76%),hsl(30,88%,60%))}
+
+  /* explore panel (tabs) */
+  #explore{top:16px;right:16px;width:350px;max-height:calc(100vh - var(--ctl-h) - 46px);display:flex;flex-direction:column;overflow:hidden}
+  .tabs{display:flex;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--border);flex:none}
+  .tablist{display:flex;gap:2px;flex:1;min-width:0}
+  .tabs button{flex:1;border:0;border-radius:8px 8px 0 0;background:transparent;padding:8px 2px 9px;font-size:12.5px;color:var(--muted)}
+  .tabs button:hover{background:rgba(255,255,255,.06);color:var(--text)}
+  .tabs button.on{color:#ffe2a6;background:rgba(242,196,109,.1);box-shadow:inset 0 -2px 0 var(--gold)}
+  .tabs .x{flex:none;padding:8px 10px}
+  .tabbody{overflow-y:auto;padding:12px 16px 14px;flex:1;min-height:0}
+  .tab{display:none} .tab.on{display:block}
+  .big{font-family:var(--serif);font-size:44px;font-weight:600;line-height:1.05;margin:2px 0}
+  .big .acc{font-size:.8em}
+  h2.tabh{font-family:var(--serif);font-size:24px;font-weight:600;line-height:1.15;margin:6px 0 3px}
+  h2.tabh .acc{font-size:.85em}
+  .sub{font-size:12.5px;color:#cdc9d8;margin:0 0 10px;line-height:1.45}
+  .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:12px 0 5px}
+  .lbl .dim{text-transform:none;letter-spacing:0}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chips button{padding:4px 9px;font-size:12px;border-radius:999px}
+  dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:10px 0;font-size:13px;line-height:1.35}
+  dl .r{display:contents}
+  dt{color:var(--muted)} dd{margin:0;font-variant-numeric:tabular-nums}
+  .note{font-size:12.5px;line-height:1.5;color:#cdc9d8;margin:0 0 10px;padding-top:9px;border-top:1px solid var(--border)}
+  .small{font-size:11.5px;line-height:1.45}
+  .field{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0}
+  .field output{color:var(--text);min-width:2em;text-align:center;font-variant-numeric:tabular-nums;font-size:14px}
+  .field button{padding:3px 10px}
+  input[type=number]{width:86px;font:inherit;font-size:12.5px;color:var(--text);background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:4px 6px}
+  #fifthR{flex:1;width:auto;min-width:60px}
+  #missWrap{position:relative;margin-top:6px}
+  #miss{width:100%;height:132px;display:block;cursor:pointer}
+  #missTip{position:absolute;top:0;left:0;pointer-events:none;background:rgba(8,9,18,.96);border:1px solid rgba(255,255,255,.14);
+    border-radius:8px;padding:5px 8px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .1s;transform:translate(-50%,calc(-100% - 6px))}
+
+  /* controls */
+  #controls{left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
+    flex-wrap:wrap;justify-content:center;padding:9px 10px;max-width:calc(100vw - 20px)}
+  .group{display:flex;gap:6px;align-items:center}
+  .sep{width:1px;align-self:stretch;background:var(--border)}
+  button{font:inherit;font-size:13px;color:var(--text);background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap;
+    transition:background .15s,border-color .15s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  button.on{background:rgba(242,196,109,.17);border-color:rgba(242,196,109,.55);color:#ffe2a6}
+  button.fly.on{animation:glow 1.2s ease-in-out infinite}
+  @keyframes glow{50%{background:rgba(242,196,109,.3)}}
+  .seg{background:rgba(255,255,255,.04);border-radius:10px;padding:2px;border:1px solid rgba(255,255,255,.07)}
+  .seg button{border-color:transparent;background:transparent}
+  .seg button.on{background:rgba(242,196,109,.17);border-color:rgba(242,196,109,.55)}
+  .mag{font-size:12.5px;color:var(--muted);gap:8px}
+  .mag output{color:var(--text);min-width:2.6em;font-variant-numeric:tabular-nums}
+  input[type=range]{width:110px;accent-color:var(--gold)}
+
+  /* caption */
+  #caption{position:fixed;left:50%;bottom:calc(var(--ctl-h) + 28px);transform:translate(-50%,8px);
+    max-width:min(640px,calc(100vw - 32px));text-align:center;font-size:14.5px;line-height:1.5;padding:10px 16px;
+    opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;z-index:4}
+  #caption.show{opacity:1;transform:translate(-50%,0)}
+
+  /* explainer drawer */
+  #why{top:16px;left:16px;bottom:calc(var(--ctl-h) + 30px);width:min(460px,calc(100vw - 32px));padding:20px 22px;
+    overflow:auto;transform:translateX(calc(-100% - 30px));transition:transform .35s ease;z-index:5}
+  #why.open{transform:none}
+  #why h2{font-family:var(--serif);font-size:22px;margin:0 0 12px;font-weight:600}
+  #why h3{font-size:14px;margin:18px 0 6px;color:var(--gold);font-weight:600;letter-spacing:.2px}
+  #why p,#why li{font-size:13.5px;line-height:1.6;color:#d6d2df}
+  #why p{margin:0}
+  #why ul{margin:0;padding-left:18px} #why li{margin-bottom:6px}
+  #why .x{position:sticky;top:0;float:right}
+  .math{font-family:var(--serif);font-size:15px;white-space:nowrap}
+  #harm{margin:8px 0}
+  #harm button{display:grid;grid-template-columns:2.4em 1fr 4.4em 3.2em 4.2em;gap:8px;align-items:center;width:100%;
+    text-align:left;padding:4px 8px;margin:3px 0;font-size:12.5px;font-variant-numeric:tabular-nums}
+  #harm .hb{height:6px;border-radius:3px;background:rgba(235,231,219,.55)}
+  #harm button.key .hb{background:var(--gold)}
+  #harm .off{color:var(--muted);text-align:right}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:1100px), (max-height:700px){
+    #intro{width:290px;padding:13px 15px 12px}
+    h1{font-size:20px}
+    #intro p{font-size:12.5px;line-height:1.5;margin-bottom:10px}
+    #explore{width:310px}
+    .big{font-size:36px}
+    dl{font-size:12.5px} .note{font-size:12px}
+  }
+  @media (max-width:760px){
+    #intro{left:10px;right:10px;top:10px;width:auto;padding:12px 14px}
+    h1{font-size:19px;margin-bottom:6px}
+    #intro p,.legend{display:none}
+    #depth{margin-top:6px}
+    #explore{top:auto;bottom:calc(var(--ctl-h) + 22px);left:10px;right:10px;width:auto;max-height:52vh}
+    .big{font-size:32px}
+    #caption{bottom:calc(var(--ctl-h) + 22px)}
+    #why{left:10px;top:10px}
+    input[type=range]{width:80px}
+    button{padding:7px 10px}
+    .sep{display:none}
+    #controls{left:8px;right:8px;transform:none;max-width:none;gap:8px;padding:8px}
+    .group{flex-wrap:wrap;justify-content:center}
+  }
+</style>
+<noscript><style>#cv,#explore,#why,#caption,#noteTip,#controls,#intro .row,#depth,.legend,#introMin{display:none}</style></noscript>
+</head>
+<body>
+<canvas id="cv" tabindex="0" role="slider" aria-label="Spiral of fifths: the note you are on" aria-orientation="horizontal" aria-valuemin="-100000" aria-valuemax="100000" aria-valuenow="0" aria-valuetext="C, home" aria-describedby="cvHelp"></canvas>
+<p id="cvHelp" class="sr">Notes spiral outward through sharps and inward through flats, forever. Left and right arrow keys move one fifth at a time, or one whole lap with Shift. Enter or Space plays the note you are on.</p>
+
+<section id="intro" class="panel">
+  <button class="mini" id="introMin" title="Show less" aria-label="Collapse this panel">–</button>
+  <h1>The Circle of Fifths Is a Spiral</h1>
+  <noscript><p><b>This page needs JavaScript</b> to draw the spiral and play its notes. Turn it on and reload to explore.</p></noscript>
+  <p>Stack pure fifths from C and you never get back to C. Twelve steps lands you on <b>B<span class="acc">♯</span></b>, which is a slightly higher note. Keep going and the spiral winds <b>outward</b> through more and more sharps. Go the other way and it winds <b>inward</b> through more and more flats. Neither end ever stops.</p>
+  <div class="row">
+    <button id="whyBtn">Why?</button>
+    <button id="exploreBtn" title="Show the Note, Key, Interval, Chord and Tuning tabs">Explore</button>
+    <span id="hint">Scroll or ← → to move one fifth; drag to travel; pinch or the Zoom slider to zoom. Click a note, or press Enter, to hear it. The tabs explore keys, intervals, chords and tunings.</span>
+  </div>
+  <div id="depth"></div>
+  <div class="legend"><span>flats</span><span class="bar"></span><span>sharps</span></div>
+</section>
+
+<aside id="explore" class="panel" aria-label="Explore notes, keys, intervals, chords and tunings">
+  <div class="tabs">
+    <div class="tablist" role="tablist" aria-label="What to explore">
+      <button data-tab="note" id="tabBtn-note" class="on" role="tab" aria-selected="true" aria-controls="tab-note">Note</button>
+      <button data-tab="key" id="tabBtn-key" role="tab" aria-selected="false" aria-controls="tab-key" tabindex="-1">Key</button>
+      <button data-tab="interval" id="tabBtn-interval" role="tab" aria-selected="false" aria-controls="tab-interval" tabindex="-1">Interval</button>
+      <button data-tab="chord" id="tabBtn-chord" role="tab" aria-selected="false" aria-controls="tab-chord" tabindex="-1">Chord</button>
+      <button data-tab="tuning" id="tabBtn-tuning" role="tab" aria-selected="false" aria-controls="tab-tuning" tabindex="-1">Tuning</button>
+    </div>
+    <button class="x" id="exploreClose" aria-label="Close the Explore panel">✕</button>
+  </div>
+  <div class="tabbody">
+
+    <!-- NOTE -->
+    <section class="tab on" id="tab-note" role="tabpanel" aria-labelledby="tabBtn-note">
+      <div class="big" id="nName"></div>
+      <div class="sub" id="nWhere"></div>
+      <dl>
+        <div class="r"><dt>Spelling</dt><dd id="nSpell"></dd></div>
+        <div class="r"><dt>Piano key</dt><dd id="nKey"></dd></div>
+        <div class="r"><dt id="nSameLbl">Same key as</dt><dd id="nSame"></dd></div>
+        <div class="r"><dt>This tuning</dt><dd id="nDev"></dd></div>
+        <div class="r"><dt>Frequency</dt><dd id="nHz"></dd></div>
+      </dl>
+      <p class="note" id="nNote"></p>
+      <div class="row">
+        <button id="pPure" title="Play this note in the current tuning">▶ This tuning</button>
+        <button id="pPiano" title="Play the piano's equal-tempered version">▶ Piano</button>
+        <button id="pBoth" title="Play both at once: listen for the wobble">▶ Both</button>
+      </div>
+    </section>
+
+    <!-- KEY -->
+    <section class="tab" id="tab-key" role="tabpanel" aria-labelledby="tabBtn-key">
+      <div class="lbl">Scale</div>
+      <div class="chips" id="kSize">
+        <button data-size="5">Pentatonic · 5</button>
+        <button data-size="7" class="on">Diatonic · 7</button>
+        <button data-size="12">Chromatic · 12</button>
+      </div>
+      <div id="kModeWrap">
+        <div class="lbl">Mode <span class="dim">brightest → darkest</span></div>
+        <div class="chips" id="kModes"></div>
+      </div>
+      <h2 class="tabh" id="kName" aria-live="polite"></h2>
+      <div class="sub" id="kSub"></div>
+      <div class="row">
+        <button id="kIn" title="Move the key one fifth inward (one more flat)"></button>
+        <button id="kOut" title="Move the key one fifth outward (one more sharp)"></button>
+      </div>
+      <dl>
+        <div class="r"><dt>Notes</dt><dd id="kNotes"></dd></div>
+        <div class="r" id="kFormulaRow"><dt>Formula</dt><dd id="kFormula"></dd></div>
+        <div class="r" id="kSigRow"><dt id="kSigLbl">Signature</dt><dd id="kSig"></dd></div>
+        <div class="r" id="kTwinRow"><dt>Twin</dt><dd id="kTwin"></dd></div>
+      </dl>
+      <div id="kChordWrap">
+        <div class="lbl">Chords in this key <span class="dim">click to hear</span></div>
+        <div class="chips" id="kChords"></div>
+        <div class="row" style="margin-top:7px"><button id="kChordsPlay">▶ Play them all</button></div>
+      </div>
+      <div id="kRelWrap">
+        <div class="lbl">Same notes, different tonic</div>
+        <div class="chips" id="kRel"></div>
+      </div>
+      <p class="note" id="kNote" style="margin-top:10px"></p>
+      <div class="row">
+        <button id="kPlay">▶ Play scale</button>
+        <button id="kPlay2">▶ Up &amp; down</button>
+      </div>
+      <p class="small dim" style="margin:12px 0 0">Order of sharps: F C G D A E B, which is the spiral read outward from F<span class="acc">♯</span>. Order of flats: B E A D G C F, read inward from B<span class="acc">♭</span>.</p>
+    </section>
+
+    <!-- INTERVAL -->
+    <section class="tab" id="tab-interval" role="tabpanel" aria-labelledby="tabBtn-interval">
+      <div class="sub" id="iPick" aria-live="polite"></div>
+      <h2 class="tabh" id="iName" aria-live="polite"></h2>
+      <div class="sub" id="iWhat"></div>
+      <dl id="iRows">
+        <div class="r"><dt>Along the spiral</dt><dd id="iSteps"></dd></div>
+        <div class="r"><dt>This tuning</dt><dd id="iCents"></dd></div>
+        <div class="r"><dt>Piano</dt><dd id="iET"></dd></div>
+        <div class="r"><dt>Pure-fifth ratio</dt><dd id="iRatio"></dd></div>
+        <div class="r"><dt>Natural ratio</dt><dd id="iJust"></dd></div>
+      </dl>
+      <p class="note" id="iNote"></p>
+      <div class="row">
+        <button id="iMel">▶ One, then the other</button>
+        <button id="iHar">▶ Together</button>
+        <button id="iJustP">▶ Natural</button>
+      </div>
+      <div class="lbl">Every interval is a number of fifths</div>
+      <div class="chips" id="iChips"></div>
+    </section>
+
+    <!-- CHORD -->
+    <section class="tab" id="tab-chord" role="tabpanel" aria-labelledby="tabBtn-chord">
+      <div class="chips" id="cTypes"></div>
+      <h2 class="tabh" id="cName" aria-live="polite"></h2>
+      <div class="sub" id="cSub"></div>
+      <div class="row">
+        <button id="cIn" title="Move the root one fifth inward">◂ Root down a fifth</button>
+        <button id="cOut" title="Move the root one fifth outward">Root up a fifth ▸</button>
+      </div>
+      <dl id="cTones"></dl>
+      <p class="note" id="cNote"></p>
+      <div class="row">
+        <button id="cPlay">▶ Chord</button>
+        <button id="cArp">▶ Arpeggio</button>
+      </div>
+      <div class="lbl">Progressions <span class="dim">in the major key of the root</span></div>
+      <div class="chips" id="cProgs"></div>
+    </section>
+
+    <!-- TUNING -->
+    <section class="tab" id="tab-tuning" role="tabpanel" aria-labelledby="tabBtn-tuning">
+      <h2 class="tabh" id="tName"></h2>
+      <div class="chips" id="tPresets"></div>
+      <div class="field">Fifth
+        <input id="fifthR" type="range" min="680" max="725" step="0.01" aria-label="Size of the fifth in cents">
+        <input id="fifthN" type="number" min="680" max="725" step="0.001" aria-label="Size of the fifth in cents, exact"> ¢
+      </div>
+      <div class="sub small" id="tFifth"></div>
+      <div class="field">Notes per lap
+        <button id="lapDown" aria-label="Fewer notes per lap">−</button><output id="lapV"></output><button id="lapUp" aria-label="More notes per lap">+</button>
+      </div>
+      <p class="sub" id="tLap"></p>
+      <p class="note" id="tBlurb"></p>
+      <div class="lbl">Why 12?</div>
+      <div class="sub small">How far <i>n</i> fifths land from the nearest whole number of octaves. Short bars are near misses, and the gold ones beat every smaller <i>n</i>. Click a bar to use that many notes per lap.</div>
+      <div id="missWrap">
+        <canvas id="miss" role="img" aria-label="Bar chart: how close n fifths come to a whole number of octaves, for n from 1 to 60"></canvas>
+        <div id="missTip"></div>
+      </div>
+    </section>
+  </div>
+</aside>
+
+<aside id="why" class="panel" aria-label="Why it's a spiral" aria-hidden="true" inert>
+  <button class="x" id="whyClose" aria-label="Close this explanation">✕</button>
+  <h2>Why it's a spiral, not a circle</h2>
+
+  <h3>1 · The names never repeat</h3>
+  <p>Start on C and climb in fifths: C, G, D, A, E, B, F<span class="acc">♯</span>, C<span class="acc">♯</span>, G<span class="acc">♯</span>, D<span class="acc">♯</span>, A<span class="acc">♯</span>, E<span class="acc">♯</span>… and the twelfth step is <b>B<span class="acc">♯</span></b>, not C. Keep going: F<span class="acc">𝄪</span>, C<span class="acc">𝄪</span>, G<span class="acc">𝄪</span>… then triple sharps, quadruple sharps, forever. Going down: F, B<span class="acc">♭</span>, E<span class="acc">♭</span>… C<span class="acc">♭</span>, F<span class="acc">♭</span>, B<span class="acc">𝄫</span>… forever. B<span class="acc">♯</span> and C share a piano key, but they are not the same note.</p>
+
+  <h3>2 · The sound doesn't come back either</h3>
+  <p>A pure fifth is a <span class="math">3 : 2</span> frequency ratio. Stack twelve of them: <span class="math">(3/2)<sup>12</sup> ≈ 129.746</span>. Seven octaves: <span class="math">2<sup>7</sup> = 128</span>. So B<span class="acc">♯</span> comes out about 1.4% higher than C. That's <b>23.46 cents</b>, a gap called the <i>Pythagorean comma</i>. Play the two together and you can hear it as a slow wobble.</p>
+
+  <h3>3 · And it never will</h3>
+  <p>To land exactly back home you'd need <span class="math">3<sup>a</sup> = 2<sup>b</sup></span> for some whole numbers <i>a</i> and <i>b</i>. But every power of 3 is odd and every power of 2 is even, so they can never be equal. There are near misses (53 fifths overshoot 31 octaves by only 3.6 cents), but a miss is a miss. The spiral goes on forever outward, adding sharps, and forever inward, adding flats.</p>
+
+  <h3>4 · How the piano fakes a circle</h3>
+  <p>Equal temperament makes every fifth 700 cents instead of 701.955, shaving <b>1.955 cents</b> off each one. Twelve shaved fifths make exactly seven octaves. The comma gets spread too thinly to notice, and the spiral is squashed flat into the familiar 12-note circle, where B<span class="acc">♯</span>, C and D<span class="acc">𝄫</span> all become one key. Press <b>Equal temperament</b> to watch it collapse, or try other tunings in the <b>Tuning</b> tab.</p>
+
+  <h3>5 · Where the 3 : 2 comes from</h3>
+  <p>Every note an instrument plays is really a stack of <i>harmonics</i>: whole-number multiples of its lowest frequency. Here are the first eight for a low C. Click one to hear it on its own.</p>
+  <div id="harm"></div>
+  <div class="row" style="margin:6px 0 10px">
+    <button data-hp="1,2">▶ 2 : 1 octave</button>
+    <button data-hp="2,3">▶ 3 : 2 fifth</button>
+    <button data-hp="3,4">▶ 4 : 3 fourth</button>
+    <button data-hp="4,5">▶ 5 : 4 major third</button>
+    <button data-hp="all">▶ All eight together</button>
+  </div>
+  <p>The 2nd harmonic is the octave. The <b>3rd</b>, brought down an octave, is the <b>fifth</b>: the simplest new note there is, which is why the whole spiral is built from it. The 5th harmonic gives the natural major third (5 : 4), which stacking fifths never quite reaches: four pure fifths make 81 : 64, about 22 cents too wide. The 7th is a "blue" seventh that no piano key has. Played together, all eight melt into a single C.</p>
+
+  <h3>Reading the picture</h3>
+  <ul>
+    <li><b>Going around</b> is distance travelled in fifths. With pure fifths one step is 30.08°, a hair more than a twelfth of a turn, so a lap of 12 comes to 361°. Each note sits about 1° past its partner one lap in. That sliver is the comma, and the <b>comma magnifier</b> exaggerates it.</li>
+    <li><b>Out and in</b> are sharps and flats. It's a logarithmic spiral: every lap is the same shape at a different size, so there are infinitely many laps in both directions and it never reaches the centre.</li>
+    <li><b>Colour:</b> ivory for naturals, warm for sharps, cool for flats. Deeper colour means more accidentals. <span class="acc">♯</span><sup>5</sup> means five sharps.</li>
+    <li><b>Gold rings</b> mark the notes a whole lap away from the selected one. With 12 notes per lap they share its piano key: same key, different notes.</li>
+    <li>The faint <b>spokes</b> are where the notes would sit if the circle closed. With 12 per lap they're the piano's keys as an ordinary circle of fifths.</li>
+  </ul>
+
+  <h3>Exploring with the tabs</h3>
+  <ul>
+    <li><b>Key:</b> a scale is a run of neighbouring notes on the spiral: 5 for pentatonic, 7 for major, minor and the modes, 12 for chromatic. Slide it along and the key signature changes one sharp or flat at a time.</li>
+    <li><b>Interval:</b> every interval is a fixed number of fifths. A major third is always 4 steps out and a minor third 3 steps in, whatever note you start on.</li>
+    <li><b>Chord:</b> every chord type is a fixed shape, and changing key just slides it along the spiral.</li>
+    <li><b>Tuning:</b> change the size of the fifth and watch the spiral open, close, or drift the other way.</li>
+  </ul>
+
+  <h3>Controls</h3>
+  <ul>
+    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap.</li>
+    <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
+    <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
+    <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
+    <li>Your tuning, tab, zoom, key and chord are remembered for next time. <button id="resetAll" style="margin-top:4px">Reset everything</button></li>
+  </ul>
+
+  <h3>The barber-pole sound</h3>
+  <p>Normally every note is played near middle C, so climbing in fifths has to jump back down an octave every so often. With <b>Barber pole</b> on, each note is a <i>Shepard tone</i>: the same note in every octave at once, loudest in the middle and fading to nothing at the top and bottom. Each step glides every octave up (or down) a fifth. The highest ones fade out as new ones fade in underneath, so the pitch seems to climb or sink forever while staying in the same place. The steps glide rather than jump, because a jump of a fifth between Shepard tones can easily sound like a step <i>down</i> a fourth.</p>
+  <p class="dim" style="margin-top:14px;font-size:12px">Sound: notes are played near middle C (C4 = 261.63 Hz).</p>
+</aside>
+
+<div id="caption" class="panel" role="status"></div>
+<div id="noteTip" aria-hidden="true"></div>
+
+<section id="controls" class="panel" aria-label="Spiral controls">
+  <div class="group">
+    <button id="flyIn" class="fly" title="Fly inward through the flats">◂ Flats</button>
+    <button id="home" title="Back to C (Home)">Home</button>
+    <button id="flyOut" class="fly" title="Fly outward through the sharps">Sharps ▸</button>
+  </div>
+  <span class="sep"></span>
+  <div class="group seg" role="group" aria-label="Tuning">
+    <button id="pure" class="on" title="Pythagorean tuning: pure 3:2 fifths (T)">Pure fifths</button>
+    <button id="temp" title="12-note equal temperament (T)">Equal temperament</button>
+  </div>
+  <span class="sep"></span>
+  <label class="group mag" title="Zoom the whole picture in or out (pinch, + and − keys, 0 to reset)">Zoom
+    <input id="zoom" type="range" min="-1.5" max="2" step="0.01" value="0" aria-label="Zoom" aria-valuetext="1.00 times">
+    <output id="zoomV">×1.0</output>
+  </label>
+  <span class="sep"></span>
+  <label class="group mag" title="Exaggerate the comma so the drift is easier to see">Comma magnifier
+    <input id="mag" type="range" min="1" max="20" step="1" value="1" aria-label="Comma magnifier" aria-valuetext="1 times">
+    <output id="magV">×1</output>
+  </label>
+  <span class="sep"></span>
+  <div class="group">
+    <button id="comma" title="Play C, then the note one lap later, then both together">Hear the comma</button>
+    <button id="stack" title="Climb one lap of fifths from C">Stack 12 fifths</button>
+    <button id="auto" title="Play each note as you scroll past it (A)">Auto-play</button>
+    <button id="barber" title="Auto-play with Shepard tones: the pitch seems to rise (or fall) forever, like a barber's pole (B)">Barber pole</button>
+    <button id="mute" title="Sound on/off">Sound on</button>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Music maths
+   k = number of fifths from C (positive = up/sharpward, negative = down/flatward)
+   ===================================================================== */
+const LOG2_15 = Math.log2(1.5);
+const PURE    = 1200 * LOG2_15;              // a pure 3:2 fifth: 701.955 ¢
+const GROWTH  = 2.3, LNG = Math.log(GROWTH); // the spiral gets 2.3× wider each lap
+const C4      = 261.6256;
+const LETTERS = 'FCGDAEB';
+const KEY_NAMES = ['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'];
+const SUPS    = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const SERIF = '"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif';
+const SYM   = '"Segoe UI Symbol","Noto Music","Apple Symbols","Arial Unicode MS",sans-serif';
+const SANS  = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+const BADGE = 'system-ui,"Segoe UI","Segoe UI Symbol","Noto Music","Apple Symbols",sans-serif';
+
+const mod    = (a, n) => ((a % n) + n) % n;
+const clamp  = (x, a, b) => Math.max(a, Math.min(b, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const fmtInt = n => Math.abs(n).toLocaleString('en-US');
+const cap    = s => s.charAt(0).toUpperCase() + s.slice(1);
+const plural = (n, w) => `${fmtInt(n)} ${w}${Math.abs(n) === 1 ? '' : 's'}`;
+
+function spell(k) { const i = k + 1; return { letter: LETTERS[mod(i, 7)], acc: Math.floor(i / 7) }; }
+function accSym(a) { return a === 0 ? '' : a === 1 ? '♯' : a === 2 ? '𝄪' : a === -1 ? '♭' : a === -2 ? '𝄫' : a > 0 ? '♯' : '♭'; }
+function accNum(a) { return Math.abs(a) >= 3 ? String(Math.abs(a)) : ''; }
+function nameHTML(k) {
+  const { letter, acc } = spell(k), n = accNum(acc);
+  return `<span class="nm">${letter}<span class="acc">${accSym(acc)}</span>${n ? `<sup>${n}</sup>` : ''}</span>`;
+}
+function nameText(k) { const { letter, acc } = spell(k); return letter + accSym(acc) + accNum(acc).replace(/\d/g, d => SUPS[d]); }
+const accHTML = s => s.replace(/♯|♭|𝄪|𝄫/g, m => `<span class="acc">${m}</span>`);
+const keyHTML = pc => accHTML(KEY_NAMES[pc]);
+const pianoPC = k => mod(7 * k, 12);                       // which piano key (semitones above C)
+const pianoHz = k => C4 * Math.pow(2, pianoPC(k) / 12);
+
+/* ---------- tuning: the size of the fifth, and how many fifths make one lap ---------- */
+const PRESETS = [
+  { id: 'pyth', name: 'Pythagorean', chip: 'Pure 3 : 2', fifth: PURE, lap: 12,
+    blurb: 'Pure 3 : 2 fifths, the tuning this page started with. Twelve of them overshoot seven octaves by the <b>Pythagorean comma</b> (23.46 ¢), so the spiral never closes, and no other lap size closes it either.' },
+  { id: '12', name: '12-note equal temperament', chip: '12 equal', fifth: 700, lap: 12,
+    blurb: 'The modern piano. Every fifth is shaved to 700 ¢, so twelve make exactly seven octaves and the spiral collapses into the 12-note circle. Every key works equally well, but no interval except the octave is pure.' },
+  { id: 'mean', name: 'Quarter-comma meantone', chip: '¼-comma meantone', fifth: 300 * Math.log2(5), lap: 12,
+    blurb: 'Common from the 1500s to the 1700s. Each fifth is narrowed by a quarter of the syntonic comma so that major thirds come out exactly pure (5 : 4). Twelve fifths now fall <b>41.06 ¢ short</b> of seven octaves, so the drift runs backwards: B<span class="acc">♯</span> is lower than C, and G<span class="acc">♯</span> is lower than A<span class="acc">♭</span>. Keys far from C sound badly out of tune.' },
+  { id: '31', name: '31-note equal temperament', chip: '31 equal', fifth: 1200 * 18 / 31, lap: 31,
+    blurb: 'Its fifth (696.77 ¢) is almost identical to quarter-comma meantone\'s, but 31 of them make exactly 18 octaves, so the meantone spiral closes after 31 steps.' },
+  { id: '19', name: '19-note equal temperament', chip: '19 equal', fifth: 1200 * 11 / 19, lap: 19,
+    blurb: 'Fifths of 694.74 ¢: nineteen of them make exactly 11 octaves. C<span class="acc">♯</span> and D<span class="acc">♭</span> are different keys here, while B<span class="acc">♯</span> is the same note as C<span class="acc">♭</span>.' },
+  { id: '53', name: '53-note equal temperament', chip: '53 equal', fifth: 1200 * 31 / 53, lap: 53,
+    blurb: 'Its fifth is only 0.07 ¢ narrower than pure, and 53 of them make exactly 31 octaves, closing the Pythagorean spiral almost invisibly. Its major thirds are nearly pure too.' },
+  { id: '5', name: '5-note equal temperament', chip: '5 equal', fifth: 720, lap: 5,
+    blurb: 'Fifths stretched to 720 ¢, so five make exactly three octaves. Only a pentatonic scale fits, and B and C become the same note.' },
+  { id: '7', name: '7-note equal temperament', chip: '7 equal', fifth: 1200 * 4 / 7, lap: 7,
+    blurb: 'Fifths squeezed to 685.71 ¢, so seven make exactly four octaves. A diatonic world with no sharps or flats at all: F and F<span class="acc">♯</span> are the same note.' },
+];
+const tune = { fifth: PURE, lap: 12 };
+const lapOct   = () => Math.max(1, Math.round(tune.lap * tune.fifth / 1200));
+const lapComma = () => tune.lap * tune.fifth - 1200 * lapOct();   // ¢ left over after one lap (0 = closes)
+const closes   = () => Math.abs(lapComma()) < 0.005;
+const fifthPreset = () => PRESETS.find(p => Math.abs(p.fifth - tune.fifth) < 0.0005);
+const exactPreset = () => PRESETS.find(p => Math.abs(p.fifth - tune.fifth) < 0.0005 && p.lap === tune.lap);
+const isPyth   = () => Math.abs(tune.fifth - PURE) < 0.0005;
+const tuningName = () => { const p = fifthPreset(); return p ? p.name : `Fifths of ${tune.fifth.toFixed(2)} ¢`; };
+const cents = k => mod(k * tune.fifth, 1200);                      // pitch above C in this tuning
+function dev(k) { const d = cents(k) - 100 * pianoPC(k); return d - 1200 * Math.round(d / 1200); }
+const hz = k => pianoHz(k) * Math.pow(2, dev(k) / 1200);           // this tuning, near middle C
+
+/* ---------- intervals: everything follows from the number of fifths, d ---------- */
+const IBASE = [0, 2, 4, -1, 1, 3, 5];   // fifths for the unaltered unison, 2nd, 3rd … 7th
+const INUM  = ['unison', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'];
+const IPERF = [1, 0, 0, 1, 1, 0, 0];
+const JUST  = { P1: [1, 1], m2: [16, 15], M2: [9, 8], m3: [6, 5], M3: [5, 4], P4: [4, 3], A4: [45, 32], d5: [64, 45],
+                P5: [3, 2], m6: [8, 5], M6: [5, 3], m7: [9, 5], M7: [15, 8] };
+function qualWord(n, up) {
+  const w = up ? 'augmented' : 'diminished';
+  return n === 1 ? w : n === 2 ? `doubly ${w}` : `${n}× ${w}`;
+}
+function interval(d) {
+  const s = mod(4 * d, 7);           // letter steps (0 = unison … 6 = seventh)
+  const q = (d - IBASE[s]) / 7;      // every 7 fifths away from the plain interval = one sharp or flat
+  const o = (4 * d - s) / 7;         // octaves to subtract to bring it inside one octave
+  let qual, ab;
+  if (IPERF[s]) {
+    if (q === 0) { qual = 'perfect'; ab = 'P'; }
+    else if (q > 0) { qual = qualWord(q, true); ab = 'A'.repeat(Math.min(q, 3)); }
+    else { qual = qualWord(-q, false); ab = 'd'.repeat(Math.min(-q, 3)); }
+  } else {
+    if (q === 0) { qual = 'major'; ab = 'M'; }
+    else if (q === -1) { qual = 'minor'; ab = 'm'; }
+    else if (q > 0) { qual = qualWord(q, true); ab = 'A'.repeat(Math.min(q, 3)); }
+    else { qual = qualWord(-q - 1, false); ab = 'd'.repeat(Math.min(-q - 1, 3)); }
+  }
+  return { d, s, q, o, num: s + 1, name: `${qual} ${INUM[s]}`, abbr: ab + (s + 1),
+           cents: d * tune.fifth - 1200 * o, pure: d * PURE - 1200 * o, et: d * 700 - 1200 * o };
+}
+function pythRatio(d, o) {
+  const p3 = d, p2 = -(d + o);
+  if (Math.abs(p3) > 15 || Math.abs(p2) > 30) return `3<sup>${p3}</sup> × 2<sup>${p2}</sup>`;
+  const num = 3 ** Math.max(p3, 0) * 2 ** Math.max(p2, 0), den = 3 ** Math.max(-p3, 0) * 2 ** Math.max(-p2, 0);
+  return `${num.toLocaleString('en-US')} : ${den.toLocaleString('en-US')}`;
+}
+const fmtSteps = d => d === 0 ? 'same note' : `${plural(d, 'fifth')} ${d > 0 ? 'out' : 'in'}`;
+const fmtCents = c => `${c > 0.005 ? '+' : c < -0.005 ? '−' : '±'}${Math.abs(c).toFixed(2)} ¢`;
+const SYNTONIC = 1200 * Math.log2(81 / 80);
+
+/* ---------- state ---------- */
+const S = {
+  z: 30, zT: 0, zRate: 1.8,   // z: which note sits on the home ring (intro: unwinds from 30 to 0)
+  zl: 0, zlT: 0,              // zoom, as a power of two (0 = ×1, 1 = ×2, −1 = ×½)
+  t: 0, tT: 0,                // 0 = spiral, 1 = closed circle (when the tuning closes)
+  mag: 1, magT: 1,
+  sel: 0, hover: null,
+  fly: 0, flyTime: 0,
+  autoplay: false, userDriven: false, lastK: 0, barber: false,
+  lens: 'note',
+  pulses: [],
+};
+const KEY = { tonic: 0, size: 7, pos: 1 };          // pos = tonic's place in the window, counted in fifths
+const IV  = { a: 0, b: 4, next: 'a' };
+const CH  = { root: 0, type: 'maj' };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduceMotion) S.z = 0;
+
+/* =====================================================================
+   Drawing
+   ===================================================================== */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let W, H, CX, CY, R0, RBASE, DPR;
+let DOTL = 0.15, FONTL = 0.12, STEP = 30, FT = 0, VIS = { kLo: 0, kHi: 0 };
+let slotNames = [];
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // centre the spiral between the top panel (mobile) and the control bar,
+  // sized so that C and B♯ (one lap further out) both fit on screen
+  const mobile = W < 760;
+  const top = mobile ? $('intro').offsetHeight + 10 : 0;
+  const bottom = H - $('controls').offsetHeight - 14;
+  CX = W / 2; CY = (top + bottom) / 2;
+  RBASE = (mobile ? 0.2 : 0.19) * Math.min(W, bottom - top);
+  R0 = homeRadius();
+}
+// radius of the home ring: the zoom, and a closed circle is drawn bigger than the spiral's home ring
+function homeRadius() { return RBASE * Math.pow(2, S.zl) * (1 + 0.9 * S.t); }
+addEventListener('resize', () => { resize(); drawMiss(); });
+
+// angle per fifth: one lap = `lap` fifths ≈ a whole number of octaves; the leftover is the drift
+function computeStep() {
+  const base = 360 / tune.lap, real = 360 * tune.fifth / (1200 * lapOct());
+  STEP = base + (1 - S.t) * S.mag * (real - base);
+}
+function geom(k) {
+  const r = R0 * Math.exp(LNG * (1 - S.t) * (k - S.z) / tune.lap);
+  const th = k * STEP * Math.PI / 180;
+  return { x: CX + r * Math.sin(th), y: CY - r * Math.cos(th), r };
+}
+
+function noteColor(acc) {
+  if (acc === 0) return '#efe8d6';
+  const n = Math.abs(acc), m = Math.min(n, 7);
+  const h = (acc > 0 ? 30 : 212) + 9 * Math.sin(n * 1.7);
+  return `hsl(${h.toFixed(1)},${55 + m * 5}%,${79 - m * 3}%)`;
+}
+function lineColor(k, a) {
+  const u = Math.tanh(k / 24);
+  return `hsla(${u >= 0 ? 32 : 212},${(25 + Math.abs(u) * 65).toFixed(0)}%,${(80 - Math.abs(u) * 14).toFixed(0)}%,${a.toFixed(3)})`;
+}
+function drawLabel(k, x, y, f, dr) {
+  const { letter, acc } = spell(k);
+  const sym = accSym(acc), num = accNum(acc);
+  ctx.font = `600 ${f}px ${SERIF}`;       const wL = ctx.measureText(letter).width;
+  ctx.font = `${f * 0.8}px ${SYM}`;       const wS = sym ? ctx.measureText(sym).width : 0;
+  ctx.font = `700 ${f * 0.5}px ${SANS}`;  const wN = num ? ctx.measureText(num).width + f * 0.05 : 0;
+  const total = wL + wS + wN, maxW = dr * 1.62;
+  const s = total > maxW ? maxW / total : 1, F = f * s;
+  let cx = x - total * s / 2;
+  const base = y + F * 0.34;
+  ctx.fillStyle = '#17151f';
+  ctx.font = `600 ${F}px ${SERIF}`; ctx.fillText(letter, cx, base); cx += wL * s;
+  if (sym) { ctx.font = `${F * 0.8}px ${SYM}`; ctx.fillText(sym, cx, base); cx += wS * s; }
+  if (num) { ctx.font = `700 ${F * 0.5}px ${SANS}`; ctx.fillText(num, cx + F * 0.05, base - F * 0.42); }
+}
+
+// a band that follows the spiral from k0 to k1; hw = half-width as a fraction of the radius
+function ribbon(k0, k1, hw) {
+  const step = tune.lap / 60, ks = [];
+  for (let k = k0; ; k += step) { const kk = Math.min(k, k1); ks.push(kk); if (kk >= k1) break; }
+  const pts = ks.map(k => geom(k)).filter(g => g.r > 0.3);
+  if (pts.length < 2) return false;
+  ctx.beginPath();
+  pts.forEach((g, i) => {
+    const h = g.r * hw, x = g.x + (g.x - CX) / g.r * h, y = g.y + (g.y - CY) / g.r * h;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const g = pts[i], h = g.r * hw;
+    ctx.lineTo(g.x - (g.x - CX) / g.r * h, g.y - (g.y - CY) / g.r * h);
+  }
+  ctx.closePath();
+  return true;
+}
+function pill(x, y, text, fill, fs = 11) {
+  ctx.font = `700 ${fs}px ${BADGE}`;
+  const w = Math.max(fs * 1.55, ctx.measureText(text).width + fs * 0.95), h = fs * 1.55;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2); else ctx.rect(x - w / 2, y - h / 2, w, h);
+  ctx.fill();
+  ctx.fillStyle = '#17151f'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y + 0.5);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+// small label just outside a note, away from the centre
+function badge(k, text, fill) {
+  const g = geom(k), dr = g.r * DOTL;
+  if (dr < 4 || g.x < -40 || g.x > W + 40 || g.y < -40 || g.y > H + 40) return;
+  const ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, fs = clamp(dr * 0.45, 10, 13), off = dr + fs * 1.05;
+  pill(g.x + ux * off, g.y + uy * off, text, fill, fs);
+}
+function ringAt(k, color, width, pad, dash) {
+  const L = tune.lap, g = geom(k), dr = (FT > 0.5 ? R0 : g.r) * DOTL;
+  if (dr < 1.5 || k < VIS.kLo - L || k > VIS.kHi + L) return;
+  const a = mod(k, L) * 2 * Math.PI / L;
+  const gx = FT > 0.5 ? CX + R0 * Math.sin(a) : g.x, gy = FT > 0.5 ? CY - R0 * Math.cos(a) : g.y;
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.arc(gx, gy, dr + pad, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/* lens overlays: drawn under the notes … */
+function lensUnder() {
+  if (S.lens === 'key') {
+    const { w, size } = keyWin();
+    ctx.fillStyle = 'rgba(242,196,109,0.22)'; ctx.strokeStyle = 'rgba(242,196,109,0.6)'; ctx.lineWidth = 1.2;
+    if (ribbon(w - 0.45, w + size - 0.55, DOTL * 1.45)) { ctx.fill(); ctx.stroke(); }
+    const tw = keyTwin();
+    if (tw && size !== 12) {
+      ctx.strokeStyle = 'rgba(242,196,109,0.4)'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+      if (ribbon(tw.w - 0.45, tw.w + size - 0.55, DOTL * 1.45)) ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  } else if (S.lens === 'interval' && IV.b !== null && IV.a !== IV.b) {
+    ctx.fillStyle = 'rgba(242,196,109,0.55)';
+    if (ribbon(Math.min(IV.a, IV.b), Math.max(IV.a, IV.b), DOTL * 0.3)) ctx.fill();
+  } else if (S.lens === 'chord') {
+    const pts = chordTones().map(c => geom(c.k));
+    ctx.fillStyle = 'rgba(242,196,109,0.14)';
+    ctx.beginPath(); pts.forEach((g, i) => i ? ctx.lineTo(g.x, g.y) : ctx.moveTo(g.x, g.y)); ctx.closePath(); ctx.fill();
+  }
+}
+/* … and on top of them */
+function lensOver() {
+  const GOLD = '#f2c46d', IVORY = 'rgba(235,231,219,0.92)';
+  if (S.lens === 'key') {
+    for (const t of scaleTones()) if (t.deg) badge(t.k, t.deg, t.k === KEY.tonic ? GOLD : IVORY);
+    const dr = geom(KEY.tonic).r * DOTL;
+    ringAt(KEY.tonic, GOLD, Math.max(2, dr * 0.08), Math.max(3, dr * 0.14));
+  } else if (S.lens === 'interval') {
+    badge(IV.a, '1', GOLD);
+    if (IV.b !== null) {
+      badge(IV.b, '2', GOLD);
+      const d = IV.b - IV.a;
+      if (d) {
+        const g = geom((IV.a + IV.b) / 2), ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, off = g.r * DOTL * 1.9;
+        if (g.r * DOTL > 4) pill(g.x + ux * off, g.y + uy * off, `${fmtInt(d)} ${d > 0 ? 'out' : 'in'}`, IVORY, 11);
+      }
+    }
+  } else if (S.lens === 'chord') {
+    const tones = chordTones(), pts = tones.map(c => geom(c.k));
+    ctx.strokeStyle = 'rgba(242,196,109,0.85)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath(); pts.forEach((g, i) => i ? ctx.lineTo(g.x, g.y) : ctx.moveTo(g.x, g.y)); ctx.closePath(); ctx.stroke();
+    tones.forEach(c => badge(c.k, c.role, c.i === 0 ? GOLD : IVORY));
+  }
+}
+
+let drawn = [];
+function draw(now) {
+  computeStep();
+  const L = tune.lap;
+  const ft = FT = smooth(0.45, 0.95, S.t);           // crossfade spiral -> circle
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.hypot(W, H) * 0.62);
+  bg.addColorStop(0, '#15173a'); bg.addColorStop(0.4, '#0c0d1d'); bg.addColorStop(1, '#05060b');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  const rMax = Math.hypot(Math.max(CX, W - CX), Math.max(CY, H - CY));
+
+  // spokes: where the notes would sit if the circle closed (12 per lap = the piano's keys)
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = `rgba(255,255,255,${((0.1 + 0.05 * smooth(1, 5, S.mag)) * Math.min(1, 12 / L)).toFixed(3)})`;
+  ctx.beginPath();
+  for (let s = 0; s < L; s++) {
+    const a = s * 2 * Math.PI / L;
+    ctx.moveTo(CX, CY); ctx.lineTo(CX + rMax * Math.sin(a), CY - rMax * Math.cos(a));
+  }
+  ctx.stroke();
+
+  // which notes are on screen
+  const ln = LNG * (1 - S.t) / L;
+  let kLo = S.z - L * 18, kHi = S.z + L * 7;
+  if (ln > 1e-9) {
+    kLo = Math.max(kLo, S.z + Math.log(1 / R0) / ln);
+    kHi = Math.min(kHi, S.z + Math.log(rMax * 1.3 / R0) / ln);
+  }
+  kLo = Math.floor(kLo); kHi = Math.ceil(kHi);
+  VIS = { kLo, kHi };
+
+  // the spiral line: a soft glow pass, then a bright core
+  if (ft < 1) {
+    ctx.lineCap = 'round';
+    const step = L / 60;
+    for (const [wMul, wMin, a] of [[0.085, 2, 0.13], [0.03, 1, 0.85]]) {
+      let p = geom(kLo);
+      for (let k = kLo + step; k <= kHi; k += step) {
+        const q = geom(k);
+        if (q.r > 0.6 && !(Math.max(p.x, q.x) < -50 || Math.min(p.x, q.x) > W + 50 || Math.max(p.y, q.y) < -50 || Math.min(p.y, q.y) > H + 50)) {
+          ctx.strokeStyle = lineColor(k, a * (1 - ft) * Math.min(1, q.r / 6));
+          ctx.lineWidth = Math.max(wMin * Math.min(1, q.r / 20), q.r * wMul * Math.min(1, DOTL / 0.15));
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
+        p = q;
+      }
+    }
+  }
+
+  lensUnder();
+
+  // gold thread through the notes a whole lap away from the selected one
+  const showSel = S.lens === 'note' || S.lens === 'tuning';
+  const fam = [];
+  if (showSel) for (let k = kLo + mod(S.sel - kLo, L); k <= kHi; k += L) fam.push(k);
+  if (ft < 1 && fam.length > 1) {
+    ctx.strokeStyle = `rgba(242,196,109,${0.28 * (1 - ft)})`; ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    fam.forEach((k, i) => { const g = geom(k); i ? ctx.lineTo(g.x, g.y) : ctx.moveTo(g.x, g.y); });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  drawn = [];
+
+  // notes
+  const noteA = 1 - ft;
+  if (noteA > 0.01) {
+    for (let k = kLo; k <= kHi; k++) {
+      const g = geom(k), dr = g.r * DOTL;
+      if (dr < 0.45 || g.x + dr < 0 || g.x - dr > W || g.y + dr < 0 || g.y - dr > H) continue;
+      ctx.globalAlpha = noteA;
+      ctx.fillStyle = noteColor(spell(k).acc);
+      ctx.beginPath(); ctx.arc(g.x, g.y, dr, 0, Math.PI * 2); ctx.fill();
+      const f = Math.min(64, g.r * FONTL);
+      if (f >= 7) { ctx.globalAlpha = noteA * smooth(7, 10, f); drawLabel(k, g.x, g.y, f, dr); }
+      if (noteA > 0.4) drawn.push({ k, x: g.x, y: g.y, dr });
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // closed tuning: one ring of `lap` keys, each a whole family of names glued together
+  if (ft > 0.01) {
+    ctx.globalAlpha = ft;
+    ctx.strokeStyle = 'rgba(242,196,109,0.32)'; ctx.lineWidth = Math.max(1, R0 * 0.014);
+    ctx.beginPath(); ctx.arc(CX, CY, R0, 0, Math.PI * 2); ctx.stroke();
+    const dr = R0 * DOTL, fs = Math.max(11, Math.min(14, R0 * 0.05));
+    for (let s = 0; s < L; s++) {
+      const a = s * 2 * Math.PI / L, sin = Math.sin(a), cos = Math.cos(a);
+      const x = CX + R0 * sin, y = CY - R0 * cos;
+      const names = slotNames[s];
+      ctx.fillStyle = noteColor(spell(names[0]).acc);
+      ctx.beginPath(); ctx.arc(x, y, dr, 0, Math.PI * 2); ctx.fill();
+      if (R0 * FONTL >= 7) drawLabel(names[0], x, y, Math.min(64, R0 * FONTL), dr);
+      if (L <= 19 && S.lens !== 'key' && S.lens !== 'chord') {
+        const ro = R0 + dr + 9;
+        ctx.font = `${fs}px ${SANS}`;
+        ctx.fillStyle = 'rgba(235,231,219,0.78)';
+        ctx.textAlign = sin > 0.3 ? 'left' : sin < -0.3 ? 'right' : 'center';
+        const ty = CY - ro * cos + (cos < -0.3 ? fs : cos > 0.3 ? -2 : fs * 0.35);
+        ctx.fillText(names.map(nameText).join(' = '), CX + ro * sin, ty);
+        ctx.textAlign = 'left';
+      }
+      if (ft > 0.6) drawn.push({ k: names[0], x, y, dr, slot: s });
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  lensOver();
+
+  // rings: same-lap family, hover, selection, pulses
+  for (const k of fam) if (k !== S.sel) {
+    const dr = geom(k).r * DOTL;
+    ringAt(k, 'rgba(242,196,109,0.6)', Math.max(1, dr * 0.05), Math.max(2, dr * 0.1), [4, 3]);
+  }
+  if (S.hover !== null && S.hover !== S.sel) ringAt(S.hover, 'rgba(255,255,255,0.6)', 1.5, 3);
+  if (showSel) {
+    const dr = (ft > 0.5 ? R0 : geom(S.sel).r) * DOTL;
+    ringAt(S.sel, '#f2c46d', Math.max(2, dr * 0.07), Math.max(3, dr * 0.14));
+  }
+  S.pulses = S.pulses.filter(p => now - p.t0 < 900);
+  for (const p of S.pulses) {
+    if (now < p.t0) continue;
+    const u = (now - p.t0) / 900;
+    const dr = (ft > 0.5 ? R0 : geom(p.k).r) * DOTL;
+    ringAt(p.k, `rgba(255,226,166,${(1 - u) * 0.9})`, 2.5 * (1 - u) + 0.5, dr * (0.15 + 0.9 * u));
+  }
+}
+
+/* =====================================================================
+   Sound
+   ===================================================================== */
+let AC = null, master = null, wave = null, muted = false;
+function audio() {
+  if (!AC) {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
+    AC = new Ctx();
+    const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
+    master = AC.createGain(); master.gain.value = muted ? 0 : 0.9;
+    master.connect(comp); comp.connect(AC.destination);
+    const N = 12, re = new Float32Array(N), im = new Float32Array(N);
+    for (let h = 1; h < N; h++) im[h] = Math.pow(h, -1.6) * (h % 2 ? 1 : 0.75);
+    wave = AC.createPeriodicWave(re, im);
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, when = 0, dur = 1, vol = 0.2, sine = false) {
+  const a = audio(); if (!a) return null;
+  const t0 = a.currentTime + 0.03 + when;
+  const o = a.createOscillator(), g = a.createGain();
+  if (sine) o.type = 'sine'; else o.setPeriodicWave(wave);
+  o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.025);
+  g.gain.setTargetAtTime(vol * 0.55, t0 + 0.04, 0.3);
+  g.gain.setTargetAtTime(0.0001, t0 + dur, 0.14);
+  o.connect(g); g.connect(master);
+  o.start(t0); o.stop(t0 + dur + 1.2);
+  return { t0, end: t0 + dur, gain: g.gain, oscs: [o] };
+}
+/* Shepard tone, the "auditory barber pole": the same pitch class in every octave at once, with
+   loudness following a fixed bell curve over the octaves. Gliding every octave up a fifth, the top
+   ones fade out while new ones fade in at the bottom, so it seems to climb forever. c0 → c1 in cents. */
+const SHEP_LB  = Math.log2(C4 / 256);
+const SHEP_MU  = Math.log2(330), SHEP_SIG = 1.15;
+const SHEP_NORM = SHEP_SIG * Math.sqrt(2 * Math.PI);
+const shepAmp = l2 => Math.exp(-((l2 - SHEP_MU) ** 2) / (2 * SHEP_SIG * SHEP_SIG)) / SHEP_NORM;
+function shepard(c0, c1, glide, dur = 0.45, vol = 0.24, when = 0) {
+  const a = audio(); if (!a) return null;
+  const t0 = a.currentTime + 0.03 + when, end = t0 + Math.max(dur, glide), oscs = [];
+  const env = a.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+  env.gain.setTargetAtTime(vol * 0.6, t0 + 0.03, 0.25);
+  env.gain.setTargetAtTime(0.0001, end, 0.12);
+  env.connect(master);
+  for (let n = 3; n <= 13; n++) {
+    const l0 = SHEP_LB + n + c0 / 1200, l1 = SHEP_LB + n + c1 / 1200;
+    if (Math.max(shepAmp(l0), shepAmp(l1)) < 0.002) continue;
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.setValueAtTime(2 ** l0, t0);
+    if (glide > 0 && c0 !== c1) {
+      o.frequency.exponentialRampToValueAtTime(2 ** l1, t0 + glide);
+      const N = 16, curve = new Float32Array(N);
+      for (let i = 0; i < N; i++) curve[i] = shepAmp(l0 + (l1 - l0) * i / (N - 1));
+      g.gain.setValueCurveAtTime(curve, t0, glide);
+    } else g.gain.setValueAtTime(shepAmp(l1), t0);
+    o.connect(g); g.connect(env);
+    o.start(t0); o.stop(end + 0.9); oscs.push(o);
+  }
+  return { t0, end, gain: env.gain, oscs };
+}
+/* The one voice for "play this note", so a note sounds the same however you reach it: clicked, or
+   scrolled to. It rings until the next note takes over, and the quicker the notes are coming the
+   quicker the old one gets out of the way, so fast scrolling stays clean instead of turning to mud.
+   d = direction of the step that arrived here (barber pole only); when = seconds from now. */
+const NOTE_LEN = 1.1, NOTE_VOL = 0.2, SHEP_VOL = 0.24;
+const NOTE_MIN_GAP = 0.035;   // notes never start closer together than this, so they stay in order
+let voice = null, noteClock = 0;
+function letGo(v, at, gap) {
+  if (at >= v.end) return;                  // it already finished by itself
+  at = Math.max(at, v.t0 + 0.03);           // let its attack finish first
+  const tau = clamp(gap * 0.35, 0.015, 0.14);
+  v.gain.cancelScheduledValues(at);
+  v.gain.setTargetAtTime(0.0001, at, tau);
+  for (const o of v.oscs) try { o.stop(at + tau * 8); } catch (_) { /* some browsers allow only one stop() */ }
+}
+function playNote(k, d = 0, when = 0) {
+  const a = audio(); if (!a) return;
+  when = Math.max(when, noteClock + NOTE_MIN_GAP - a.currentTime);
+  const at = a.currentTime + when, gap = at - noteClock; noteClock = at;
+  pulse(k, when * 1000);
+  let v;
+  if (S.barber) {
+    const c1 = cents(k);
+    v = shepard(c1 - d * tune.fifth, c1, d ? clamp(gap * 0.9, 0.04, 0.16) : 0, NOTE_LEN, SHEP_VOL, when);
+  } else v = tone(hz(k), when, NOTE_LEN, NOTE_VOL);
+  if (voice) letGo(voice, v.t0, gap);
+  voice = v;
+}
+function pulse(k, delayMs = 0) { S.pulses.push({ k, t0: performance.now() + delayMs }); }
+const midHz = (f, lo = 190, hi = 380) => { while (f > hi) f /= 2; while (f < lo) f *= 2; return f; };
+
+let seq = 0;
+function later(ms, fn) { const id = seq; setTimeout(() => { if (id === seq) fn(); }, ms); }
+let capTimer = 0;
+function caption(html, ms = 6000) {
+  const c = $('caption'); c.innerHTML = html; c.classList.add('show');
+  clearTimeout(capTimer); if (ms) capTimer = setTimeout(() => c.classList.remove('show'), ms);
+}
+function goTo(z, rate = 5) {
+  if (Math.abs(z - S.z) > 60) S.z = z + Math.sign(S.z - z) * 60;   // skip the long way back
+  S.zT = z; S.zRate = rate; S.userDriven = false;
+}
+function ensureVisible(k) { if (Math.abs(k - S.z) > tune.lap * 1.3) goTo(k); }
+
+/* =====================================================================
+   Note tab
+   ===================================================================== */
+let lastDepth = '';
+function updateDepth() {
+  let html;
+  if (S.tT > 0.5) html = `${tuningName()}: <b>${tune.lap} keys</b>, the spiral closed into a circle.`;
+  else {
+    const laps = S.z / tune.lap, k = Math.round(S.z);
+    if (Math.abs(laps) < 0.05) html = `Depth: <b>home</b>, around C`;
+    else html = `Depth: <b>${Math.abs(laps).toFixed(1)} laps ${laps > 0 ? 'out (sharps)' : 'in (flats)'}</b> · around ${nameHTML(k)}`;
+  }
+  if (html !== lastDepth) { $('depth').innerHTML = html; lastDepth = html; }
+}
+function fmtLaps(k) {
+  const v = (Math.abs(k) / tune.lap).toFixed(2).replace(/\.?0+$/, '');
+  return `${v} lap${v === '1' ? '' : 's'} ${k > 0 ? 'out' : 'in'}`;
+}
+// How a note reads aloud: "B flat", "F double sharp", "G with 4 sharps".
+function spokenName(k) {
+  const { letter, acc } = spell(k), n = Math.abs(acc), w = acc > 0 ? 'sharp' : 'flat';
+  return n === 0 ? letter : `${letter} ${n === 1 ? w : n === 2 ? 'double ' + w : n === 3 ? 'triple ' + w : `with ${n} ${w}s`}`;
+}
+function spokenNote(k) {
+  const d = dev(k);
+  return spokenName(k) + (k === 0 ? ', home' : `, ${plural(k, 'fifth')} ${k > 0 ? 'up' : 'down'} from C`)
+    + (Math.abs(d) < 0.05 ? '' : `, ${Math.abs(d).toFixed(1)} cents ${d > 0 ? 'sharp' : 'flat'} of the piano`);
+}
+function updateInfo() {
+  const k = S.sel, L = tune.lap, { letter, acc } = spell(k), n = Math.abs(k), pc = pianoPC(k), d = dev(k);
+  cv.setAttribute('aria-valuenow', k); cv.setAttribute('aria-valuetext', spokenNote(k));
+  $('nName').innerHTML = nameHTML(k);
+  $('nWhere').textContent = k === 0 ? 'Home: the note everything is measured from'
+    : `${plural(n, 'fifth')} ${k > 0 ? 'up' : 'down'} from C · ${fmtLaps(k)}`;
+  $('nSpell').innerHTML = acc === 0 ? `${letter} natural` : `${letter} + ${plural(acc, acc > 0 ? 'sharp' : 'flat')}`;
+  $('nKey').innerHTML = keyHTML(pc);
+  $('nSameLbl').textContent = L === 12 ? 'Same key as' : 'One lap away';
+  $('nSame').innerHTML = `${nameHTML(k - L)} <span class="dim">(1 lap in)</span>, ${nameHTML(k + L)} <span class="dim">(1 lap out)</span>`;
+  $('nDev').innerHTML = `${fmtCents(d)} <span class="dim">vs the piano</span>`;
+  $('nHz').innerHTML = `${hz(k).toFixed(2)} Hz <span class="dim">here,</span> ${pianoHz(k).toFixed(2)} <span class="dim">piano</span>`;
+  const delta = tune.fifth - 700, total = k * delta, dir = total > 0 ? 'sharp' : 'flat';
+  let note;
+  if (k === 0) note = `Every other note is reached by stacking fifths of ${tune.fifth.toFixed(3)} ¢ up or down from here.`;
+  else if (Math.abs(delta) < 1e-6) note = `In equal temperament every fifth is exactly a piano fifth, so this note sits exactly on the piano's ${keyHTML(pc)}.`;
+  else if (Math.abs(d) > 50) {
+    const near = mod(Math.round(cents(k) / 100), 12);
+    note = `${fmtInt(n)} fifths × ${Math.abs(delta).toFixed(3)} ¢ = ${Math.abs(total).toFixed(1)} ¢ of drift. It has piled up so far that by ear this note is now closer to the piano's ${keyHTML(near)} than to its own key.`;
+  } else {
+    note = `Each fifth here is ${Math.abs(delta).toFixed(3)} ¢ ${delta > 0 ? 'wider' : 'narrower'} than a piano fifth. ${cap(fmtInt(n))} of them add up to ${Math.abs(total).toFixed(2)} ¢ ${dir} of the piano's ${keyHTML(pc)}.`;
+    if (isPyth() && n % 12 === 0) note += ` That's exactly ${n === 12 ? 'one Pythagorean comma' : `${fmtInt(n / 12)} Pythagorean commas`}.`;
+  }
+  $('nNote').innerHTML = note;
+}
+function select(k, play, openCard = true) {
+  S.sel = k; updateInfo();
+  if (openCard && !expUserClosed) setExplore(true);
+  if (play) playNote(k);
+}
+function autoNote(k, d = 0, when = 0) { select(k, false, false); playNote(k, d, when); }
+
+/* =====================================================================
+   Key tab: a scale is a window of neighbouring fifths
+   ===================================================================== */
+const MODES = {
+  5:  { chips: ['Major', 'Blues major', 'Suspended', 'Minor', 'Blues minor'],
+        names: ['major pentatonic', 'blues major pentatonic', 'suspended pentatonic', 'minor pentatonic', 'blues minor pentatonic'] },
+  7:  { chips: ['Lydian', 'Major', 'Mixolydian', 'Dorian', 'Minor', 'Phrygian', 'Locrian'],
+        names: ['Lydian', 'major', 'Mixolydian', 'Dorian', 'minor', 'Phrygian', 'Locrian'],
+        titles: ['Lydian', 'Ionian', 'Mixolydian', 'Dorian', 'Aeolian', 'Phrygian', 'Locrian'] },
+  12: { chips: [], names: ['', '', '', '', '', 'chromatic'] },
+};
+const keyWin = () => ({ w: KEY.tonic - KEY.pos, size: KEY.size });
+const keyName = (t = KEY.tonic, pos = KEY.pos, size = KEY.size) => `${nameHTML(t)} ${MODES[size].names[pos]}`;
+function degLabel(d) {   // scale degree, relative to the major scale (♭3, ♯4 …)
+  const iv = interval(d), q = iv.q;
+  return (q > 0 ? '♯'.repeat(q) : '♭'.repeat(-q)) + iv.num;
+}
+function scaleTones() {
+  const { w, size } = keyWin(), out = [];
+  for (let k = w; k < w + size; k++) {
+    const iv = interval(k - KEY.tonic);
+    out.push({ k, iv, deg: size === 12 ? '' : degLabel(k - KEY.tonic), c: mod(iv.cents, 1200), et: mod(iv.et, 1200) });
+  }
+  out.sort((a, b) => size === 12 ? a.et - b.et : (a.iv.num - b.iv.num) || (a.c - b.c));
+  return out;
+}
+function signature(w, size) {
+  const sh = [], fl = []; let count = 0;
+  for (let k = w; k < w + size; k++) { const a = spell(k).acc; if (a > 0) sh.push(k); if (a < 0) fl.push(k); count += Math.abs(a); }
+  fl.reverse();
+  return { sh, fl, count };
+}
+function keyTwin() {   // the same key a lap away (12 fifths): same piano keys, different spelling
+  const { size } = keyWin(), c = [KEY.tonic - 12, KEY.tonic + 12].map(t => ({ t, w: t - KEY.pos, count: signature(t - KEY.pos, size).count }));
+  return c[0].count <= c[1].count ? c[0] : c[1];
+}
+function updateKey() {
+  const { w, size } = keyWin(), tones = scaleTones(), sig = signature(w, size), tw = keyTwin();
+  document.querySelectorAll('#kSize button').forEach(b => b.classList.toggle('on', +b.dataset.size === size));
+  $('kModeWrap').style.display = size === 12 ? 'none' : '';
+  if (size !== 12) $('kModes').innerHTML = MODES[size].chips.map((c, i) =>
+    `<button data-p="${i}" class="${i === KEY.pos ? 'on' : ''}" title="${(MODES[size].titles || MODES[size].names)[i]}">${c}</button>`).join('');
+  $('kName').innerHTML = keyName();
+  $('kSub').innerHTML = `${size} neighbouring notes on the spiral, from ${nameHTML(w)} to ${nameHTML(w + size - 1)}. Click any note to make it the tonic.`;
+  if (size === 7) {
+    $('kIn').innerHTML = `◂ ${nameHTML(w + 6)} → ${nameHTML(w - 1)}`;
+    $('kOut').innerHTML = `${nameHTML(w)} → ${nameHTML(w + 7)} ▸`;
+  } else { $('kIn').innerHTML = '◂ Down a fifth'; $('kOut').innerHTML = 'Up a fifth ▸'; }
+  $('kNotes').innerHTML = tones.map(t => nameHTML(t.k)).join(' ');
+  $('kFormulaRow').style.display = size === 12 ? 'none' : '';
+  $('kFormula').innerHTML = accHTML(tones.map(t => t.deg).join(' '));
+  $('kSigRow').style.display = size === 12 ? 'none' : '';
+  $('kSigLbl').textContent = size === 7 ? 'Signature' : 'Accidentals';
+  $('kSig').innerHTML = sig.count === 0 ? 'none: all naturals'
+    : `${plural(sig.count, sig.sh.length ? 'sharp' : 'flat')}: ${[...sig.sh, ...sig.fl].map(nameHTML).join(' ')}`;
+  $('kTwinRow').style.display = size === 12 ? 'none' : '';
+  $('kTwin').innerHTML = `${keyName(tw.t)} <span class="dim">(${tw.count === 0 ? 'no accidentals' : plural(tw.count, signature(tw.w, size).sh.length ? 'sharp' : 'flat')}, one lap ${tw.t > KEY.tonic ? 'out' : 'in'}: same piano keys)</span>`;
+  $('kRelWrap').style.display = size === 12 ? 'none' : '';
+  if (size === 7) {
+    const order = [1, 3, 5, 0, 2, 4, 6];   // by scale degree of the major key: Ionian, Dorian, Phrygian …
+    $('kRel').innerHTML = order.map(p => `<button data-t="${w + p}" data-p="${p}" class="${p === KEY.pos ? 'on' : ''}">${keyName(w + p, p, 7)}</button>`).join('');
+  } else if (size === 5) {
+    $('kRel').innerHTML = [0, 1, 2, 3, 4].map(p => `<button data-t="${w + p}" data-p="${p}" class="${p === KEY.pos ? 'on' : ''}">${keyName(w + p, p, 5)}</button>`).join('');
+  }
+  let note;
+  if (size === 7) {
+    note = `Moving the key one fifth outward swaps ${nameHTML(w)} for ${nameHTML(w + 7)}: one more sharp. Inward swaps ${nameHTML(w + 6)} for ${nameHTML(w - 1)}: one more flat. The modes, brightest to darkest, are the same window sliding inward one step at a time with the tonic fixed.`;
+    if (sig.count > 7) note += ` <b>Theoretical key:</b> it needs ${sig.count} accidentals, including double ${sig.sh.length ? 'sharps' : 'flats'}, so in practice it's written as its twin, ${keyName(tw.t)}.`;
+  } else if (size === 5) {
+    note = `The pentatonic scale is just five fifths in a row: the shortest stretch of the spiral that makes a tune, and one with no semitones at all. Every one of its modes uses the same five notes.`;
+  } else {
+    note = `Twelve neighbouring fifths give every piano key exactly once. One more step and you'd reach ${nameHTML(w + 12)}, which is the piano's ${nameHTML(w)} again: the start of the next lap.`;
+  }
+  $('kNote').innerHTML = note;
+  $('kChordWrap').style.display = size === 7 ? '' : 'none';
+  if (size === 7) $('kChords').innerHTML = keyChords().map((c, i) =>
+    `<button data-i="${i}" title="${CHORDS.find(x => x.id === c.type).name}">${accHTML(c.rn)} <span class="dim">${chordLabel(c.r, c.type)}</span></button>`).join('');
+  save();
+}
+/* The triads of a diatonic key, built only from notes inside the window: on each scale note the
+   third is 4 fifths out if that note is in the window (major), otherwise 3 fifths in (minor); the fifth
+   is 1 out, except on the last note of the window, where it has to be 6 in (diminished). */
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+function keyChords() {
+  const { w } = keyWin(), inWin = k => k >= w && k < w + 7;
+  return scaleTones().map(t => {
+    const r = t.k, type = inWin(r + 4) ? 'maj' : inWin(r + 1) ? 'min' : 'dim';
+    const num = +t.deg.replace(/\D/g, ''), acc = t.deg.replace(/\d/g, '');
+    let rn = ROMAN[num - 1];
+    if (type !== 'maj') rn = rn.toLowerCase();
+    if (type === 'dim') rn += '°';
+    return { r, type, rn: acc + rn };
+  });
+}
+function playKeyChord(c, when = 0) {
+  const t = CHORDS.find(x => x.id === c.type), base = midHz(hz(c.r), 150, 300);
+  t.tones.forEach((d, i) => { tone(base * 2 ** (interval(d).cents / 1200), when, 0.9, 0.12); pulse(c.r + d, when * 1000); });
+  tone(base / 2, when, 0.9, 0.09);
+}
+function setTonic(k, play) {
+  KEY.tonic = k; updateKey(); ensureVisible(k);
+  if (play) playNote(k);
+}
+function playScale(updown) {
+  seq++;
+  const tones = scaleTones().map(t => ({ k: t.k, c: t.c })).sort((a, b) => a.c - b.c);
+  const base = midHz(hz(KEY.tonic), 180, 360);
+  const up = [...tones, { k: KEY.tonic, c: 1200 }];
+  const all = updown ? [...up, ...up.slice(0, -1).reverse()] : up;
+  all.forEach((t, i) => later(i * 260, () => {
+    tone(base * 2 ** (t.c / 1200), 0, i === all.length - 1 ? 0.9 : 0.3, 0.18); pulse(t.k);
+  }));
+}
+
+/* =====================================================================
+   Interval tab
+   ===================================================================== */
+const ICHIPS = [1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6, 7, 12];
+function updateInterval() {
+  const { a, b } = IV;
+  $('iPick').innerHTML = IV.next === 'b'
+    ? `First note: <b>${nameHTML(a)}</b>. Now click the second note.`
+    : `Click two notes on the spiral, or pick an interval below.`;
+  $('iChips').innerHTML = ICHIPS.map(d => {
+    const iv = interval(d);
+    return `<button data-d="${d}" title="${iv.name}: ${fmtSteps(d)}" class="${b !== null && b - a === d ? 'on' : ''}">${iv.abbr} <span class="dim">${d > 0 ? '+' : '−'}${Math.abs(d)}</span></button>`;
+  }).join('');
+  if (b === null) {
+    $('iName').innerHTML = `${nameHTML(a)} → ?`; $('iWhat').textContent = '';
+    $('iRows').style.display = 'none'; $('iNote').style.display = 'none';
+    return;
+  }
+  $('iRows').style.display = ''; $('iNote').style.display = '';
+  const d = b - a, iv = interval(d), j = JUST[iv.abbr];
+  $('iName').textContent = cap(iv.name);
+  $('iWhat').innerHTML = `${nameHTML(a)} up to ${nameHTML(b)} · ${iv.abbr}`;
+  $('iSteps').innerHTML = fmtSteps(d);
+  $('iCents').textContent = `${iv.cents.toFixed(2)} ¢`;
+  $('iET').textContent = `${iv.et.toFixed(0)} ¢ (${plural(iv.et / 100, 'semitone')})`;
+  $('iRatio').innerHTML = `${pythRatio(d, iv.o)} <span class="dim">(${iv.pure.toFixed(2)} ¢)</span>`;
+  const jc = j ? 1200 * Math.log2(j[0] / j[1]) : 0;
+  $('iJust').innerHTML = j ? `${j[0]} : ${j[1]} <span class="dim">(${jc.toFixed(2)} ¢)</span>` : '<span class="dim">no common one</span>';
+  $('iJustP').style.display = j ? '' : 'none';
+  let note = d === 0 ? 'The same note twice.'
+    : `Every ${iv.name} is ${fmtSteps(d)} along the spiral, whatever note you start on. Slide both notes along together and the interval's name never changes.`;
+  const d2 = d - 12 * Math.round(d / 12);
+  if (d2 !== d) {
+    const iv2 = interval(d2);
+    const gap = (iv.cents - iv2.cents) - 1200 * Math.round((iv.et - iv2.et) / 1200);
+    note += ` On a piano it's the same distance as a ${iv2.name} (${fmtSteps(d2)}), which is a lap away on the spiral. ${Math.abs(gap) < 0.005 ? 'In this tuning the two really are identical.' : `In this tuning they differ by ${Math.abs(gap).toFixed(2)} ¢, which is why they get different names.`}`;
+  }
+  if (j && d !== 0) {
+    const diff = iv.cents - jc;
+    if (Math.abs(diff) < 0.01) note += ` In this tuning it's exactly the natural ${j[0]} : ${j[1]}.`;
+    else note += ` In this tuning it's ${Math.abs(diff).toFixed(2)} ¢ ${diff > 0 ? 'wider' : 'narrower'} than the natural ${j[0]} : ${j[1]}.`;
+    if (isPyth() && Math.abs(Math.abs(diff) - SYNTONIC) < 0.01) note += ` That gap is the <b>syntonic comma</b> (81 : 80), the reason meantone tunings were invented.`;
+  }
+  $('iNote').innerHTML = note;
+  save();
+}
+function pickInterval(k) {
+  if (IV.next === 'a') { IV.a = k; IV.b = null; IV.next = 'b'; playNote(k); }
+  else { IV.b = k; IV.next = 'a'; playInterval(false); }
+  updateInterval();
+}
+function playInterval(together, natural = false) {
+  if (IV.b === null) return;
+  seq++;
+  const iv = interval(IV.b - IV.a), j = JUST[iv.abbr];
+  const fa = midHz(hz(IV.a), 180, 360);
+  const fb = natural && j ? fa * j[0] / j[1] : fa * 2 ** (iv.cents / 1200);
+  if (together) { tone(fa, 0, 2.2, 0.17); tone(fb, 0, 2.2, 0.17); pulse(IV.a); pulse(IV.b); }
+  else { tone(fa, 0, 0.7, 0.18); pulse(IV.a); tone(fb, 0.6, 1.0, 0.18); pulse(IV.b, 600); }
+}
+
+/* =====================================================================
+   Chord tab: every chord type is a fixed shape on the spiral
+   ===================================================================== */
+const CHORDS = [
+  { id: 'maj',  chip: 'Major',  name: 'major',               sfx: '',     tones: [0, 4, 1],       roles: ['R', '3', '5'] },
+  { id: 'min',  chip: 'Minor',  name: 'minor',               sfx: 'm',    tones: [0, -3, 1],      roles: ['R', '♭3', '5'] },
+  { id: 'dim',  chip: 'Dim',    name: 'diminished',          sfx: '°',    tones: [0, -3, -6],     roles: ['R', '♭3', '♭5'] },
+  { id: 'aug',  chip: 'Aug',    name: 'augmented',           sfx: '+',    tones: [0, 4, 8],       roles: ['R', '3', '♯5'] },
+  { id: 'sus2', chip: 'Sus2',   name: 'suspended second',    sfx: 'sus2', tones: [0, 2, 1],       roles: ['R', '2', '5'] },
+  { id: 'sus4', chip: 'Sus4',   name: 'suspended fourth',    sfx: 'sus4', tones: [0, -1, 1],      roles: ['R', '4', '5'] },
+  { id: 'dom7', chip: '7',      name: 'dominant seventh',    sfx: '7',    tones: [0, 4, 1, -2],   roles: ['R', '3', '5', '♭7'] },
+  { id: 'maj7', chip: 'Maj7',   name: 'major seventh',       sfx: 'maj7', tones: [0, 4, 1, 5],    roles: ['R', '3', '5', '7'] },
+  { id: 'min7', chip: 'm7',     name: 'minor seventh',       sfx: 'm7',   tones: [0, -3, 1, -2],  roles: ['R', '♭3', '5', '♭7'] },
+  { id: 'hdim', chip: 'ø7',     name: 'half-diminished',     sfx: 'ø7',   tones: [0, -3, -6, -2], roles: ['R', '♭3', '♭5', '♭7'] },
+  { id: 'dim7', chip: '°7',     name: 'diminished seventh',  sfx: '°7',   tones: [0, -3, -6, -9], roles: ['R', '♭3', '♭5', '𝄫7'] },
+];
+const RN = { I: [0, 'maj'], ii: [2, 'min'], iii: [4, 'min'], IV: [-1, 'maj'], V: [1, 'maj'], V7: [1, 'dom7'], vi: [3, 'min'], 'vii°': [5, 'dim'] };
+const PROGS = [
+  { name: 'I–IV–V–I', seq: ['I', 'IV', 'V', 'I'], why: 'I, IV and V are home and its two next-door neighbours on the spiral, one step in and one step out.' },
+  { name: 'ii–V–I', seq: ['ii', 'V7', 'I'], why: 'Each root is one fifth inward from the last: the progression walks down the spiral to home.' },
+  { name: 'I–V–vi–IV', seq: ['I', 'V', 'vi', 'IV'], why: 'All four roots fit inside five neighbouring fifths, from IV (one in) to vi (three out).' },
+  { name: 'I–vi–ii–V–I', seq: ['I', 'vi', 'ii', 'V7', 'I'], why: 'After the jump out to vi, it walks inward one fifth at a time: vi, ii, V, I.' },
+  { name: 'iii–vi–ii–V–I', seq: ['iii', 'vi', 'ii', 'V7', 'I'], why: 'The "circle progression": every root is a fifth inward from the last, the strongest pull in tonal harmony.' },
+];
+const chordType = () => CHORDS.find(c => c.id === CH.type);
+const chordLabel = (root, id) => `${nameHTML(root)}${CHORDS.find(c => c.id === id).sfx}`;
+function chordTones() {
+  const t = chordType();
+  return t.tones.map((d, i) => ({ k: CH.root + d, d, i, role: t.roles[i], iv: interval(d) }));
+}
+function updateChord() {
+  const t = chordType(), tones = chordTones();
+  $('cTypes').innerHTML = CHORDS.map(c => `<button data-c="${c.id}" class="${c.id === CH.type ? 'on' : ''}" title="${c.name}">${c.chip}</button>`).join('');
+  $('cName').innerHTML = `${chordLabel(CH.root, CH.type)} <span class="dim" style="font-size:.62em">${t.name}</span>`;
+  $('cSub').innerHTML = `Notes: ${tones.map(c => nameHTML(c.k)).join(' ')}. Click any note to make it the root.`;
+  $('cTones').innerHTML = tones.map(c => `<div class="r"><dt>${accHTML(c.role)} · ${nameHTML(c.k)}</dt><dd>${c.i === 0 ? 'root' : `${c.iv.name} · ${fmtSteps(c.d)} · ${c.iv.cents.toFixed(1)} ¢`}</dd></div>`).join('');
+  const parts = tones.slice(1).map(c => `its ${accHTML(c.role)} sits ${fmtSteps(c.d)}`);
+  const shape = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
+  let note = `A ${t.name} chord is always the same shape: ${shape} from the root. Change the root and the shape just slides (and turns) along the spiral.`;
+  const third = tones.find(c => c.iv.num === 3 && JUST[c.iv.abbr]);
+  if (third) {
+    const j = JUST[third.iv.abbr], jc = 1200 * Math.log2(j[0] / j[1]), diff = third.iv.cents - jc;
+    note += ` In this tuning its ${third.iv.name} is ${third.iv.cents.toFixed(1)} ¢: ` + (Math.abs(diff) < 0.05
+      ? `exactly the natural ${j[0]} : ${j[1]}, so the chord rings perfectly still.`
+      : `${Math.abs(diff).toFixed(1)} ¢ ${diff > 0 ? 'wider' : 'narrower'} than the natural ${j[0]} : ${j[1]}${Math.abs(diff) > 15 ? ', which makes the chord sound a little rough and buzzy' : ''}.`);
+  }
+  $('cNote').innerHTML = note;
+  $('cProgs').innerHTML = PROGS.map((p, i) => `<button data-g="${i}">${p.name}</button>`).join('');
+  save();
+}
+function setRoot(k, play) { CH.root = k; updateChord(); ensureVisible(k); if (play) playChord(false); }
+function playChord(arp, dur = 1.6) {
+  const tones = chordTones(), base = midHz(hz(CH.root), 150, 300);
+  tones.forEach((c, i) => {
+    tone(base * 2 ** (c.iv.cents / 1200), arp ? i * 0.22 : 0, arp ? 0.6 : dur, 0.12);
+    pulse(c.k, arp ? i * 220 : 0);
+  });
+  if (!arp) tone(base / 2, 0, dur, 0.09);
+}
+function playProg(p) {
+  seq++;
+  const home = CH.root, homeType = CH.type;
+  const steps = p.seq.map(rn => ({ rn, off: RN[rn][0], type: RN[rn][1] }));
+  steps.forEach((s, i) => later(i * 1100, () => {
+    CH.root = home + s.off; CH.type = s.type; updateChord(); playChord(false, 1.0);
+    caption(steps.map((x, j) => j === i ? `<b>${x.rn}</b>` : x.rn).join(' → ') + ` &nbsp; ${chordLabel(home + s.off, s.type)}`, 0);
+  }));
+  later(steps.length * 1100 + 300, () => {
+    CH.root = home; CH.type = homeType; updateChord();
+    caption(`Roots: ${steps.map(s => nameHTML(home + s.off)).join(' → ')}. ${p.why}`, 8000);
+  });
+}
+
+/* =====================================================================
+   Tuning tab
+   ===================================================================== */
+function computeSlots() {
+  const L = tune.lap;
+  slotNames = Array.from({ length: L }, (_, s) => {
+    const ks = []; for (let m = -3; m <= 3; m++) ks.push(s + L * m);
+    // fewest accidentals first; on a tie, nearer to C (E♭ over D♯), then sharps (F♯ over G♭)
+    ks.sort((a, b) => Math.abs(spell(a).acc) - Math.abs(spell(b).acc) || Math.abs(a) - Math.abs(b) || b - a);
+    return ks.slice(0, 3);
+  });
+}
+function applyTuning() {
+  DOTL = Math.min(0.15, 0.92 * Math.sin(Math.PI / tune.lap)); FONTL = DOTL * 0.8;
+  computeSlots();
+  S.tT = closes() ? 1 : 0;
+  const p = exactPreset();
+  $('pure').classList.toggle('on', !!p && p.id === 'pyth');
+  $('temp').classList.toggle('on', !!p && p.id === '12');
+  $('stack').textContent = `Stack ${tune.lap} fifths`;
+  refreshAll();
+}
+function setFifth(f) { tune.fifth = clamp(f, 680, 725); applyTuning(); }
+function setLap(n) { tune.lap = clamp(Math.round(n), 3, 60); applyTuning(); }
+function applyPreset(id, quiet) {
+  const p = PRESETS.find(x => x.id === id);
+  tune.fifth = p.fifth; tune.lap = p.lap; applyTuning();
+  if (!quiet) caption(`<b>${p.name}.</b> ${p.blurb}`, 9000);
+}
+function updateTuningUI() {
+  const f = tune.fifth, L = tune.lap, O = lapOct(), c = lapComma(), ex = exactPreset(), fp = fifthPreset();
+  $('tName').textContent = tuningName();
+  $('tPresets').innerHTML = PRESETS.map(p => `<button data-preset="${p.id}" class="${ex && ex.id === p.id ? 'on' : ''}" title="${p.name}">${p.chip}</button>`).join('');
+  if (document.activeElement !== $('fifthR')) $('fifthR').value = f;
+  if (document.activeElement !== $('fifthN')) $('fifthN').value = f.toFixed(3);
+  $('lapV').textContent = L;
+  const cmp = (x, what) => Math.abs(x) < 0.0005 ? `exactly ${what}` : `${Math.abs(x).toFixed(3)} ¢ ${x > 0 ? 'wider' : 'narrower'} than ${what}`;
+  $('tFifth').innerHTML = `${cmp(f - PURE, 'pure 3 : 2')}; ${cmp(f - 700, "the piano's")}.`;
+  $('tLap').innerHTML = closes()
+    ? `${L} fifths make exactly ${plural(O, 'octave')}, so the spiral <b>closes</b> into a circle of ${L} notes: ${nameHTML(L)} and C are the same pitch.`
+    : `${L} fifths come to ${plural(O, 'octave')} ${c > 0 ? '+' : '−'} ${Math.abs(c).toFixed(2)} ¢, so each lap ${c > 0 ? 'overshoots' : 'falls short of'} where it started: ${nameHTML(L)} lands ${Math.abs(c).toFixed(2)} ¢ ${c > 0 ? 'above' : 'below'} C.${c < 0 ? ' The drift runs the other way round.' : ''}`;
+  $('tBlurb').innerHTML = fp ? fp.blurb + (ex ? '' : ` <span class="dim">(Shown here with ${L} notes per lap.)</span>`)
+    : 'A custom fifth. Watch the near-miss chart to see which lap sizes come closest to closing.';
+  drawMiss();
+}
+
+/* near-miss chart: how close do n fifths come to a whole number of octaves? */
+const missCv = $('miss'), missTip = $('missTip');
+let missBars = [];
+function drawMiss() {
+  const w = missCv.clientWidth, h = missCv.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  missCv.width = Math.round(w * dpr); missCv.height = Math.round(h * dpr);
+  const c = missCv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const N = 60, padL = 32, padR = 4, padT = 8, padB = 18, pw = w - padL - padR, ph = h - padT - padB, YMAX = 150;
+  c.font = `10px ${SANS}`; c.textAlign = 'right'; c.textBaseline = 'middle';
+  for (const v of [0, 50, 100, 150]) {
+    const y = Math.round(padT + ph * (1 - v / YMAX)) + 0.5;
+    c.strokeStyle = v ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.22)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(padL, y); c.lineTo(w - padR, y); c.stroke();
+    c.fillStyle = 'rgba(157,154,171,0.9)'; c.fillText(`${v} ¢`, padL - 5, y);
+  }
+  const slot = pw / N, bw = Math.max(1.5, slot - 2);
+  let best = Infinity; missBars = [];
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  for (let n = 1; n <= N; n++) {
+    const oct = Math.round(n * tune.fifth / 1200), m = n * tune.fifth - 1200 * oct, a = Math.abs(m);
+    const record = n >= 2 && a < best - 1e-9; if (a < best) best = a;
+    const x = padL + (n - 1) * slot + (slot - bw) / 2, bh = Math.max(1, ph * Math.min(a, YMAX) / YMAX), y = padT + ph - bh;
+    const isLap = n === tune.lap;
+    c.fillStyle = isLap ? '#ffe2a6' : record ? '#f2c46d' : 'rgba(157,154,171,0.4)';
+    c.beginPath();
+    const rr = Math.min(2, bw / 2);
+    if (c.roundRect) c.roundRect(x, y, bw, bh, [rr, rr, 0, 0]); else c.rect(x, y, bw, bh);
+    c.fill();
+    if (record || isLap) {
+      c.font = `${isLap ? 700 : 400} 10px ${SANS}`;
+      c.fillStyle = isLap ? '#ebe7db' : 'rgba(235,231,219,0.8)';
+      c.fillText(String(n), x + bw / 2, padT + ph + 4);
+    }
+    missBars.push({ n, x0: padL + (n - 1) * slot, x1: padL + n * slot, top: y, m, oct, record });
+  }
+}
+function missAt(e) {
+  const r = missCv.getBoundingClientRect(), x = e.clientX - r.left;
+  return missBars.find(b => x >= b.x0 && x < b.x1) || null;
+}
+missCv.addEventListener('mousemove', e => {
+  const b = missAt(e);
+  if (!b) { missTip.style.opacity = 0; return; }
+  missTip.innerHTML = `<b>${b.n}</b> fifths ≈ ${plural(b.oct, 'octave')} ${b.m >= 0 ? '+' : '−'} ${Math.abs(b.m).toFixed(2)} ¢${b.record ? ' · <span style="color:#f2c46d">record</span>' : ''}`;
+  missTip.style.left = `${clamp((b.x0 + b.x1) / 2, 70, missCv.clientWidth - 70)}px`;
+  missTip.style.top = `${Math.max(14, b.top)}px`;
+  missTip.style.opacity = 1;
+});
+missCv.addEventListener('mouseleave', () => { missTip.style.opacity = 0; });
+missCv.addEventListener('click', e => {
+  const b = missAt(e); if (!b || b.n < 3) return;
+  setLap(b.n);
+  caption(`${b.n} notes per lap. ${closes() ? 'In this tuning that closes the circle exactly.' : `Each lap ${lapComma() > 0 ? 'overshoots' : 'falls short'} by ${Math.abs(lapComma()).toFixed(2)} ¢.`}`, 4000);
+});
+
+/* =====================================================================
+   Harmonic series (in the Why? drawer)
+   ===================================================================== */
+const HARM_NAMES = ['C2', 'C3', 'G3', 'C4', 'E4', 'G4', 'B♭4', 'C5'], C2 = C4 / 4;
+$('harm').innerHTML = HARM_NAMES.map((nm, i) => {
+  const n = i + 1, c = 1200 * Math.log2(n), off = c - 100 * Math.round(c / 100);
+  return `<button data-h="${n}" class="${n === 3 ? 'key' : ''}" title="Play harmonic ${n}">
+    <span>${n}×</span><span class="hb" style="width:${(100 / n).toFixed(1)}%"></span>
+    <span>${(C2 * n).toFixed(1)} Hz</span><span>${accHTML(nm)}</span>
+    <span class="off">${Math.abs(off) < 0.005 ? 'exact' : fmtCents(off)}</span></button>`;
+}).join('');
+$('harm').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  tone(C2 * +b.dataset.h, 0, 1.4, 0.28, true);
+});
+document.querySelectorAll('[data-hp]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.hp === 'all') { for (let n = 1; n <= 8; n++) tone(C2 * n, 0, 2.4, 0.3 / n, true); return; }
+  const [p, q] = b.dataset.hp.split(',').map(Number);
+  tone(C2 * 2 * p, 0, 2, 0.2, true); tone(C2 * 2 * q, 0, 2, 0.2, true);
+}));
+
+/* =====================================================================
+   Demos (one lap of the current tuning)
+   ===================================================================== */
+function hearComma() {
+  seq++; stopFly(); goTo(0);
+  const L = tune.lap, c = lapComma(), shut = closes();
+  select(L, false);
+  caption(`First <b>C</b>…`, 0);
+  tone(hz(0), 0, 0.85); pulse(0);
+  later(1000, () => {
+    tone(hz(L), 0, 0.85); pulse(L);
+    caption(`…then <b>${nameHTML(L)}</b>, ${L} fifths later${shut ? ': exactly the same pitch…' : `: ${Math.abs(c).toFixed(2)} ¢ ${c > 0 ? 'higher' : 'lower'}…`}`, 0);
+  });
+  later(2100, () => {
+    tone(hz(0), 0, 2.6); tone(hz(L), 0, 2.6); pulse(0); pulse(L);
+    const beats = Math.abs(hz(L) - hz(0));
+    caption(shut ? `…and together: one clean note. In ${tuningName()} the circle really does close.`
+      : `…and both together. That wobble, about ${beats.toFixed(1)} beats a second, is ${isPyth() && L === 12 ? 'the <b>Pythagorean comma</b>' : 'the gap left over after one lap'}. If the circle really closed, you'd hear one clean note.`, 8000);
+  });
+}
+function stackLap() {
+  seq++; stopFly(); goTo(0);
+  const L = tune.lap, ms = clamp(5600 / L, 90, 430), chain = [];
+  for (let i = 0; i <= L; i++) later(i * ms, () => {
+    tone(hz(i), 0, Math.max(0.25, ms / 1000 * 1.2), 0.18); pulse(i); select(i, false, false);
+    chain.push(i === L ? `<b>${nameHTML(i)}</b>` : nameHTML(i));
+    caption(chain.slice(-14).join(' → '), 0);
+  });
+  later((L + 1) * ms + 250, () => {
+    tone(hz(0), 0, 2.8); tone(hz(L), 0, 2.8); pulse(0); pulse(L);
+    const O = lapOct(), c = lapComma();
+    caption(isPyth() && L === 12
+      ? `<span class="math">(3/2)<sup>12</sup> ≈ 129.75</span>, but seven octaves are <span class="math">2<sup>7</sup> = 128</span>. Twelve pure fifths overshoot by 23.46 ¢, so you land on <b>B<span class="acc">♯</span></b>, not C. Now hear them together.`
+      : `${L} fifths of ${tune.fifth.toFixed(2)} ¢ = ${(L * tune.fifth).toFixed(2)} ¢, and ${plural(O, 'octave')} = ${1200 * O} ¢. ` +
+        (closes() ? `They match exactly, so ${nameHTML(L)} <b>is</b> C: the circle closes.`
+                  : `You ${c > 0 ? 'overshoot' : 'fall short'} by ${Math.abs(c).toFixed(2)} ¢, so you land on <b>${nameHTML(L)}</b>, not C. Now hear them together.`), 9000);
+  });
+}
+
+/* =====================================================================
+   Controls & wiring
+   ===================================================================== */
+function refreshAll() { updateInfo(); updateKey(); updateInterval(); updateChord(); updateTuningUI(); save(); }
+const tabBtns = [...document.querySelectorAll('.tabs [data-tab]')];
+function setLens(id) {
+  S.lens = id;
+  tabBtns.forEach(b => {
+    const on = b.dataset.tab === id;
+    b.classList.toggle('on', on); b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab-' + id));
+  setExplore(true);
+  if (id === 'tuning') drawMiss();
+  if (id === 'key') ensureVisible(KEY.tonic);
+  if (id === 'chord') ensureVisible(CH.root);
+  if (id === 'interval') ensureVisible(IV.a);
+  save();
+}
+// After a mouse click, let go of focus, so the arrow keys carry on moving the spiral.
+tabBtns.forEach(b => b.addEventListener('click', e => { setLens(b.dataset.tab); if (e.detail) b.blur(); }));
+function setExplore(open) {
+  // the button just pressed is about to disappear, so hand keyboard focus to its counterpart
+  const moveFocus = document.activeElement === (open ? $('exploreBtn') : $('exploreClose'));
+  $('explore').classList.toggle('closed', !open);
+  document.body.classList.toggle('exp-closed', !open);
+  if (open && S.lens === 'tuning') drawMiss();
+  if (moveFocus) (open ? tabBtns.find(b => b.classList.contains('on')) : $('exploreBtn')).focus();
+}
+let expUserClosed = false;     // once you close the panel, clicking notes won't pop it open again
+$('exploreClose').onclick = () => { expUserClosed = true; setExplore(false); };
+$('exploreBtn').onclick = () => { expUserClosed = false; setExplore(true); };
+function setIntroMin(min) {
+  $('intro').classList.toggle('min', min);
+  $('introMin').textContent = min ? '+' : '–';
+  $('introMin').title = min ? 'Show more' : 'Show less';
+  $('introMin').setAttribute('aria-label', min ? 'Expand this panel' : 'Collapse this panel');
+  resize();
+}
+$('introMin').onclick = () => { setIntroMin(!$('intro').classList.contains('min')); save(); };
+
+$('pure').onclick = () => applyPreset('pyth');
+$('temp').onclick = () => { stopFly(); applyPreset('12'); };
+function setMag(v) {
+  S.magT = clamp(Math.round(v), 1, 20); $('mag').value = S.magT; $('magV').textContent = '×' + S.magT;
+  $('mag').setAttribute('aria-valuetext', S.magT + ' times');
+}
+$('mag').oninput = e => { setMag(+e.target.value); save(); };
+
+// zoom: the slider works in powers of two so each step feels the same size, in or out
+const ZMIN = -1.5, ZMAX = 2;
+function setZoom(v, now = false) {
+  S.zlT = clamp(v, ZMIN, ZMAX);
+  if (now) S.zl = S.zlT;
+  $('zoom').value = S.zlT;
+  const z = Math.pow(2, S.zlT);
+  $('zoomV').textContent = '×' + (z < 0.995 ? z.toFixed(2) : z.toFixed(1));
+  $('zoom').setAttribute('aria-valuetext', z.toFixed(2) + ' times');
+  save();
+}
+$('zoom').oninput = e => setZoom(+e.target.value);
+$('zoom').ondblclick = () => setZoom(0);
+
+/* remember settings between visits */
+const STORE = 'spiral-of-fifths-v1';
+let saveTimer = 0, restoring = false;
+function save() {
+  if (restoring) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT, mag: S.magT,
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'),
+      }));
+    } catch (_) { /* storage blocked: nothing to remember */ }
+  }, 300);
+}
+function restore() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (_) { return; }
+  if (!s || typeof s !== 'object') return;
+  const num = (x, lo, hi) => typeof x === 'number' && isFinite(x) && x >= lo && x <= hi;
+  const int = (x, lo, hi) => num(x, lo, hi) && Math.round(x) === x;
+  restoring = true;
+  if (num(s.fifth, 680, 725)) tune.fifth = s.fifth;
+  if (int(s.lap, 3, 60)) tune.lap = s.lap;
+  if (num(s.zoom, ZMIN, ZMAX)) setZoom(s.zoom, true);
+  if (int(s.mag, 1, 20)) { setMag(s.mag); S.mag = S.magT; }
+  if (s.key && [5, 7, 12].includes(s.key.size) && int(s.key.tonic, -500, 500) && int(s.key.pos, 0, s.key.size - 1)) Object.assign(KEY, s.key);
+  if (s.chord && CHORDS.some(c => c.id === s.chord.type) && int(s.chord.root, -500, 500)) Object.assign(CH, s.chord);
+  if (s.iv && int(s.iv.a, -500, 500) && int(s.iv.b, -500, 500)) { IV.a = s.iv.a; IV.b = s.iv.b; }
+  if (s.introMin === true) setIntroMin(true);
+  restoring = false;
+  return ['note', 'key', 'interval', 'chord', 'tuning'].includes(s.lens) ? s.lens : null;
+}
+$('resetAll').onclick = () => {
+  try { localStorage.removeItem(STORE); } catch (_) { /* ignore */ }
+  restoring = true;
+  location.reload();
+};
+
+function stopFly() { S.fly = 0; $('flyIn').classList.remove('on'); $('flyOut').classList.remove('on'); }
+function toggleFly(dir) {
+  if (S.fly === dir) { stopFly(); return; }
+  seq++; stopFly();
+  S.fly = dir; S.flyTime = 0; S.zRate = 10; S.userDriven = true;
+  $(dir > 0 ? 'flyOut' : 'flyIn').classList.add('on');
+  caption(closes() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up.`
+        : dir > 0 ? `Flying outward. Every lap adds more sharps, and there's no last lap.`
+                  : `Flying inward. Every lap adds more flats, and you never reach the centre.`, 5000);
+}
+$('flyIn').onclick = () => toggleFly(-1);
+$('flyOut').onclick = () => toggleFly(1);
+$('home').onclick = () => { seq++; stopFly(); goTo(0); setZoom(0); select(0, false); };
+$('comma').onclick = hearComma;
+$('stack').onclick = stackLap;
+$('mute').onclick = () => {
+  muted = !muted; $('mute').textContent = muted ? 'Sound off' : 'Sound on';
+  $('mute').classList.toggle('on', muted);
+  if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, AC.currentTime, 0.02);
+};
+$('auto').onclick = () => {
+  S.autoplay = !S.autoplay;
+  $('auto').classList.toggle('on', S.autoplay);
+  $('auto').textContent = S.autoplay ? 'Auto-play on' : 'Auto-play';
+  if (S.autoplay) {
+    if (muted) $('mute').click();
+    S.lastK = Math.round(S.z); autoNote(S.lastK);
+    if (!S.barber) caption(`Auto-play on: every note plays as you scroll past it. One scroll tick = one fifth.`, 5000);
+  } else if (S.barber) setBarber(false);
+};
+function setBarber(on) {
+  S.barber = on;
+  $('barber').classList.toggle('on', on);
+  if (on && !S.autoplay) $('auto').click();
+  if (on) caption(`Barber pole on: each note is a Shepard tone. Scroll out and every step glides up a fifth, forever. Scroll in and it glides down, forever. It never runs off the top or bottom.`, 7000);
+}
+$('barber').onclick = () => setBarber(!S.barber);
+
+// note tab
+$('pPure').onclick = () => { tone(hz(S.sel), 0, 1.3); pulse(S.sel); };
+$('pPiano').onclick = () => { tone(pianoHz(S.sel), 0, 1.3); pulse(S.sel); };
+$('pBoth').onclick = () => { tone(hz(S.sel), 0, 2.6); tone(pianoHz(S.sel), 0, 2.6); pulse(S.sel); };
+
+// key tab
+$('kSize').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const size = +b.dataset.size, old = KEY.size; if (size === old) return;
+  if (size === 12) KEY.pos = 5;
+  else if (size === 5) KEY.pos = old === 7 && KEY.pos === 4 ? 3 : 0;      // major → major pentatonic, minor → minor pentatonic
+  else KEY.pos = old === 5 && KEY.pos === 3 ? 4 : 1;
+  KEY.size = size; updateKey(); playScale(false);
+});
+$('kModes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  KEY.pos = +b.dataset.p; updateKey(); playScale(false);
+});
+$('kRel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  KEY.tonic = +b.dataset.t; KEY.pos = +b.dataset.p; updateKey(); playScale(false);
+});
+$('kIn').onclick = () => setTonic(KEY.tonic - 1, true);
+$('kOut').onclick = () => setTonic(KEY.tonic + 1, true);
+$('kPlay').onclick = () => playScale(false);
+$('kPlay2').onclick = () => playScale(true);
+$('kChords').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  seq++; playKeyChord(keyChords()[+b.dataset.i]);
+});
+$('kChordsPlay').onclick = () => {
+  seq++;
+  const cs = keyChords();
+  [...cs, cs[0]].forEach((c, i) => later(i * 650, () => {
+    playKeyChord(c);
+    caption([...cs, cs[0]].map((x, j) => j === i ? `<b>${accHTML(x.rn)}</b>` : accHTML(x.rn)).join(' ') + ` &nbsp; ${chordLabel(c.r, c.type)}`, i === cs.length ? 4000 : 0);
+  }));
+};
+
+// interval tab
+$('iChips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  IV.b = IV.a + +b.dataset.d; IV.next = 'a'; updateInterval(); playInterval(false);
+});
+$('iMel').onclick = () => playInterval(false);
+$('iHar').onclick = () => playInterval(true);
+$('iJustP').onclick = () => playInterval(true, true);
+
+// chord tab
+$('cTypes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  CH.type = b.dataset.c; updateChord(); playChord(false);
+});
+$('cProgs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  playProg(PROGS[+b.dataset.g]);
+});
+$('cIn').onclick = () => setRoot(CH.root - 1, true);
+$('cOut').onclick = () => setRoot(CH.root + 1, true);
+$('cPlay').onclick = () => playChord(false);
+$('cArp').onclick = () => playChord(true);
+
+// tuning tab
+$('tPresets').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  stopFly(); applyPreset(b.dataset.preset);
+});
+$('fifthR').addEventListener('input', e => {
+  let f = +e.target.value;
+  const near = PRESETS.find(p => Math.abs(p.fifth - f) < 0.03);   // snap onto the named tunings
+  if (near) f = near.fifth;
+  setFifth(f);
+});
+$('fifthN').addEventListener('change', e => { const f = parseFloat(e.target.value); if (isFinite(f)) setFifth(f); });
+$('lapDown').onclick = () => setLap(tune.lap - 1);
+$('lapUp').onclick = () => setLap(tune.lap + 1);
+
+const why = $('why');
+function setWhy(open) {
+  const wasOpen = why.classList.contains('open');
+  why.classList.toggle('open', open); why.setAttribute('aria-hidden', String(!open));
+  why.inert = !open;                        // while it's off-screen, Tab must not wander into it
+  if (open && !wasOpen) $('whyClose').focus({ preventScroll: true });
+  if (!open && wasOpen) $('whyBtn').focus();
+}
+$('whyBtn').onclick = () => setWhy(!why.classList.contains('open'));
+$('whyClose').onclick = () => setWhy(false);
+
+// Toggle buttons show their state with the class "on"; tell screen readers the same, in one place.
+const TOGGLES = '#kSize button,#kModes button,#kRel button,#iChips button,#cTypes button,#tPresets button,.seg button,.fly,#auto,#barber';
+const syncPressed = () => document.querySelectorAll(TOGGLES).forEach(b => b.setAttribute('aria-pressed', b.classList.contains('on')));
+const pressedWatch = new MutationObserver(syncPressed);
+for (const id of ['explore', 'controls']) pressedWatch.observe($(id), { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+syncPressed();
+
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--ctl-h', $('controls').offsetHeight + 'px');
+  resize();
+}).observe($('controls'));
+resize();
+if (innerWidth < 760) setExplore(false);
+
+/* ---------- input: wheel, drag, pinch, click, keys ---------- */
+function userMove() { stopFly(); S.zRate = 14; S.userDriven = true; }
+function stepBy(n) { S.zT = Math.round(S.zT) + n; }   // land exactly on a note
+// The note you've moved to. In a closed tuning that's the plainest name for that key, as a click gives.
+function noteHere() { const k = Math.round(S.zT); return S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k; }
+function keyStep(n) { userMove(); stepBy(n); if (!S.autoplay) select(noteHere(), false, false); }   // auto-play selects as it goes
+
+// Mouse wheel: exactly one fifth per notch (the smallest notch-sized delta seen counts as one notch;
+// bigger deltas are several merged). Trackpads send tiny deltas: one fifth per 60 px of swiping.
+// A trackpad pinch arrives as ctrl + wheel, and zooms instead.
+const notchSize = {};
+let swipeAcc = 0;
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); showTip(null);
+  const d = e.deltaY; if (!d) return;
+  if (e.ctrlKey) { setZoom(S.zlT - clamp(d, -50, 50) * 0.012); return; }
+  userMove();
+  let steps = 0;
+  if (e.deltaMode === 0 && Math.abs(d) < 40) {
+    swipeAcc += d;
+    steps = Math.trunc(swipeAcc / 60); swipeAcc -= steps * 60;
+  } else {
+    const a = Math.abs(d), m = e.deltaMode;
+    notchSize[m] = Math.min(notchSize[m] || Infinity, a);
+    steps = Math.sign(d) * Math.max(1, Math.round(a / notchSize[m]));
+    swipeAcc = 0;
+  }
+  if (steps) stepBy(clamp(steps, -tune.lap, tune.lap));
+}, { passive: false });
+
+const pointers = new Map();
+let gesture = null;
+function hit(x, y) {
+  let best = null, bd = Infinity;
+  for (const d of drawn) {
+    const dd = Math.hypot(d.x - x, d.y - y);
+    if (dd < Math.max(d.dr, 7) + 3 && dd < bd) { bd = dd; best = d; }
+  }
+  return best ? best.k : null;
+}
+function onNoteClick(k) {
+  seq++;
+  if (S.lens === 'key') { select(k, false, false); setTonic(k, true); }
+  else if (S.lens === 'interval') { select(k, false, false); pickInterval(k); }
+  else if (S.lens === 'chord') { select(k, false, false); setRoot(k, true); }
+  else select(k, true);
+}
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) gesture = { moved: 0 };
+  else if (gesture) gesture.moved = 999;
+  userMove();
+});
+// hover tooltip: names the note under the mouse (handy for the tiny ones near the centre)
+const noteTip = $('noteTip');
+function showTip(k, x, y) {
+  if (k === null) { noteTip.classList.remove('show'); return; }
+  const slot = drawn.find(d => d.k === k && d.slot !== undefined);
+  const where = k === 0 ? 'home' : `${plural(k, 'fifth')} ${k > 0 ? 'up' : 'down'} from C`;
+  noteTip.innerHTML = slot
+    ? `<b>${slotNames[slot.slot].map(nameHTML).join(' = ')}</b><br><span class="dim">one key in this tuning</span>`
+    : `<b>${nameHTML(k)}</b> <span class="dim">· ${where}</span><br><span class="dim">${fmtCents(dev(k))} vs the piano's ${keyHTML(pianoPC(k))}</span>`;
+  const w = noteTip.offsetWidth, h = noteTip.offsetHeight;
+  noteTip.style.transform = `translate(${Math.round(Math.min(x + 16, innerWidth - w - 8))}px,${Math.round(Math.min(y + 16, innerHeight - h - 8))}px)`;
+  noteTip.classList.add('show');
+}
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) {
+    const k = hit(e.clientX, e.clientY);
+    S.hover = k; cv.classList.toggle('point', k !== null);
+    if (e.pointerType === 'mouse') showTip(k, e.clientX, e.clientY);
+    return;
+  }
+  noteTip.classList.remove('show');
+  const prev = pointers.get(e.pointerId), cur = { x: e.clientX, y: e.clientY };
+  let dz = 0;
+  if (pointers.size === 1) {
+    const r0 = Math.hypot(prev.x - CX, prev.y - CY), r1 = Math.hypot(cur.x - CX, cur.y - CY);
+    if (r0 > 14 && r1 > 14) dz = -tune.lap * Math.log(r1 / r0) / LNG;     // grab the spiral and stretch it
+  } else if (pointers.size === 2) {
+    // two fingers: pinch to zoom
+    const other = [...pointers.entries()].find(([id]) => id !== e.pointerId)[1];
+    const d0 = Math.hypot(prev.x - other.x, prev.y - other.y), d1 = Math.hypot(cur.x - other.x, cur.y - other.y);
+    if (d0 > 10 && d1 > 10) setZoom(S.zlT + Math.log2(d1 / d0), true);
+  }
+  if (gesture) {
+    gesture.moved += Math.hypot(cur.x - prev.x, cur.y - prev.y);
+    if (gesture.moved > 6) {
+      cv.classList.add('drag'); S.zT += dz;
+      if (!S.autoplay) S.z += dz;   // with auto-play on, the view follows at note speed instead
+    }
+  }
+  pointers.set(e.pointerId, cur);
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) {
+    if (gesture && gesture.moved <= 6 && e.type === 'pointerup') {
+      const k = hit(e.clientX, e.clientY);
+      if (k !== null) onNoteClick(k);
+    }
+    gesture = null; cv.classList.remove('drag');
+  }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', () => { if (!pointers.size) { S.hover = null; cv.classList.remove('point'); showTip(null); } });
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key.startsWith('Arrow') && e.target.closest('#why')) return;   // there they scroll the text
+  if (e.target.getAttribute('role') === 'tab' && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+    const i = tabBtns.indexOf(e.target), n = tabBtns.length;
+    const t = tabBtns[e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : mod(i + (e.key === 'ArrowRight' ? 1 : -1), n)];
+    e.preventDefault(); setLens(t.dataset.tab); t.focus();
+    return;
+  }
+  const step = e.shiftKey ? tune.lap : 1;
+  switch (e.key) {
+    case 'ArrowRight': case 'ArrowUp':   keyStep(step); break;
+    case 'ArrowLeft':  case 'ArrowDown': keyStep(-step); break;
+    case 'Enter': case ' ':
+      if (e.target !== cv && e.target !== document.body) return;
+      e.preventDefault(); onNoteClick(noteHere());
+      break;
+    case 'a': $('auto').click(); break;
+    case 'b': $('barber').click(); break;
+    case 'Home': case 'h': $('home').click(); break;
+    case 't': applyPreset(exactPreset() && exactPreset().id === '12' ? 'pyth' : '12'); break;
+    case '1': setLens('note'); break;
+    case '2': setLens('key'); break;
+    case '3': setLens('interval'); break;
+    case '4': setLens('chord'); break;
+    case '5': setLens('tuning'); break;
+    case '+': case '=': setZoom(S.zlT + 0.25); break;
+    case '-': case '_': setZoom(S.zlT - 0.25); break;
+    case '0': setZoom(0); break;
+    case 'Escape': setWhy(false); break;
+    default: return;
+  }
+});
+
+/* ---------- main loop ---------- */
+const AUTO_RATE = 22;       // fastest travel with auto-play on: 22 notes a second
+const AUTO_BACKLOG = 36;    // most notes that fast scrolling can queue up ahead of the view
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+  if (S.fly) { S.flyTime += dt; S.zT += S.fly * Math.min(18, 4 + S.flyTime * 1.6) * dt; }
+  let dz = (S.zT - S.z) * (1 - Math.exp(-dt * S.zRate));
+  if (S.autoplay && S.userDriven) {
+    const zr = Math.round(S.z);
+    S.zT = clamp(S.zT, zr - AUTO_BACKLOG, zr + AUTO_BACKLOG);
+    const capz = AUTO_RATE * dt;
+    dz = clamp(dz, -capz, capz);
+  }
+  S.z += dz;
+  if (Math.abs(S.zT - S.z) < 1e-4) S.z = S.zT;
+  S.t += (S.tT - S.t) * (1 - Math.exp(-dt * 3.2));
+  if (Math.abs(S.tT - S.t) < 1e-4) S.t = S.tT;
+  S.mag += (S.magT - S.mag) * (1 - Math.exp(-dt * 8));
+  S.zl += (S.zlT - S.zl) * (1 - Math.exp(-dt * 12));
+  if (Math.abs(S.zlT - S.zl) < 1e-4) S.zl = S.zlT;
+
+  const kNow = Math.round(S.z);
+  if (kNow !== S.lastK) {
+    if (S.autoplay && S.userDriven) {
+      const dir = Math.sign(kNow - S.lastK), n = Math.abs(kNow - S.lastK);
+      for (let i = 1; i <= n; i++) autoNote(S.lastK + dir * i, dir, (i - 1) / AUTO_RATE);
+    }
+    S.lastK = kNow;
+  }
+  R0 = homeRadius();
+  draw(now);
+  updateDepth();
+  requestAnimationFrame(frame);
+}
+const savedLens = restore();
+applyTuning();
+if (savedLens && savedLens !== 'note') { setLens(savedLens); if (innerWidth < 760) setExplore(false); }
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
