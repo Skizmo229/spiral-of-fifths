@@ -98,8 +98,8 @@
     border-radius:8px;padding:5px 8px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .1s;transform:translate(-50%,calc(-100% - 6px))}
 
   /* controls */
-  #controls{left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
-    flex-wrap:wrap;justify-content:center;padding:9px 10px;max-width:calc(100vw - 20px)}
+  #controls{left:10px;right:10px;width:fit-content;margin-inline:auto;bottom:14px;display:flex;gap:10px;align-items:center;
+    flex-wrap:wrap;justify-content:center;padding:9px 10px}
   .group{display:flex;gap:6px;align-items:center}
   .sep{width:1px;align-self:stretch;background:var(--border)}
   button{font:inherit;font-size:13px;color:var(--text);background:rgba(255,255,255,.06);
@@ -107,6 +107,11 @@
     transition:background .15s,border-color .15s}
   button:hover{background:rgba(255,255,255,.12)}
   button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  select{font:inherit;font-size:13px;color:var(--text);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    border-radius:9px;padding:6px 8px;cursor:pointer}
+  select:hover{background:rgba(255,255,255,.12)}
+  select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  select option{background:#14152a;color:var(--text)}
   button.on{background:rgba(242,196,109,.17);border-color:rgba(242,196,109,.55);color:#ffe2a6}
   button.fly.on{animation:glow 1.2s ease-in-out infinite}
   @keyframes glow{50%{background:rgba(242,196,109,.3)}}
@@ -162,7 +167,7 @@
     input[type=range]{width:80px}
     button{padding:7px 10px}
     .sep{display:none}
-    #controls{left:8px;right:8px;transform:none;max-width:none;gap:8px;padding:8px}
+    #controls{left:8px;right:8px;width:auto;gap:8px;padding:8px}
     .group{flex-wrap:wrap;justify-content:center}
   }
 </style>
@@ -170,7 +175,7 @@
 </head>
 <body>
 <canvas id="cv" tabindex="0" role="slider" aria-label="Spiral of fifths: the note you are on" aria-orientation="horizontal" aria-valuemin="-100000" aria-valuemax="100000" aria-valuenow="0" aria-valuetext="C, home" aria-describedby="cvHelp"></canvas>
-<p id="cvHelp" class="sr">Notes spiral outward through sharps and inward through flats, forever. Left and right arrow keys move one fifth at a time, or one whole lap with Shift. Enter or Space plays the note you are on.</p>
+<p id="cvHelp" class="sr">Notes spiral outward through sharps and inward through flats, forever. Left and right arrow keys move one fifth at a time, or one whole lap with Shift. Up and down arrow keys jump twelve fifths. Enter or Space plays the note you are on.</p>
 
 <section id="intro" class="panel">
   <button class="mini" id="introMin" title="Show less" aria-label="Collapse this panel">–</button>
@@ -371,7 +376,8 @@
 
   <h3>Controls</h3>
   <ul>
-    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap.</li>
+    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths.</li>
+    <li><b>Instrument</b>, in the bottom bar: the sound notes are played with. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above stay pure tones.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
     <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
@@ -406,6 +412,10 @@
   <label class="group mag" title="Exaggerate the comma so the drift is easier to see">Comma magnifier
     <input id="mag" type="range" min="1" max="20" step="1" value="1" aria-label="Comma magnifier" aria-valuetext="1 times">
     <output id="magV">×1</output>
+  </label>
+  <span class="sep"></span>
+  <label class="group mag" title="Choose the sound notes are played with">Instrument
+    <select id="instrument" aria-label="Instrument"></select>
   </label>
   <span class="sep"></span>
   <div class="group">
@@ -533,7 +543,7 @@ const S = {
   t: 0, tT: 0,                // 0 = spiral, 1 = closed circle (when the tuning closes)
   mag: 1, magT: 1,
   sel: 0, hover: null,
-  fly: 0, flyTime: 0,
+  fly: 0,
   autoplay: false, userDriven: false, lastK: 0, barber: false,
   lens: 'note',
   pulses: [],
@@ -835,7 +845,40 @@ function draw(now) {
 /* =====================================================================
    Sound
    ===================================================================== */
-let AC = null, master = null, wave = null, muted = false;
+/* Instruments. Each is built only from exact whole-number harmonics, with no vibrato or detuning,
+   because this page is about hearing small differences in tuning. A layer is one waveform; a layer's
+   `fade` makes it die away by itself, which is what gives struck and plucked sounds their bite. */
+const harmonics = (n, f) => Array.from({ length: n }, (_, i) => f(i + 1));
+const INSTRUMENTS = [
+  { id: 'keys', name: 'Soft keys', attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1,
+    layers: [{ amps: harmonics(11, h => h ** -1.6 * (h % 2 ? 1 : 0.75)) }] },
+  { id: 'piano', name: 'Piano', attack: 0.005, sustain: 0, decay: 1.1, release: 0.12, level: 1,
+    layers: [{ amps: harmonics(10, h => h ** -1.5) },
+             { amps: harmonics(18, h => h === 1 ? 0 : h ** -0.8), gain: 0.55, fade: 0.16 }] },
+  { id: 'organ', name: 'Organ', attack: 0.012, sustain: 1, decay: 0.3, release: 0.05, level: 1.19,
+    layers: [{ amps: [1, 0.75, 0.5, 0.45, 0, 0.3, 0, 0.2] }] },
+  { id: 'harp', name: 'Harp', attack: 0.004, sustain: 0, decay: 0.55, release: 0.3, level: 1,
+    layers: [{ amps: harmonics(8, h => h ** -2.2) },
+             { amps: harmonics(14, h => 1 / h), gain: 0.5, fade: 0.07 }] },
+  { id: 'marimba', name: 'Marimba', attack: 0.003, sustain: 0, decay: 0.38, release: 0.1, level: 1.12,
+    layers: [{ amps: [1] },
+             { amps: harmonics(10, h => h === 4 ? 0.7 : h === 10 ? 0.3 : 0), gain: 0.55, fade: 0.05 }] },
+  { id: 'strings', name: 'Strings', attack: 0.14, sustain: 0.85, decay: 0.5, release: 0.2, level: 1.25,
+    layers: [{ amps: harmonics(20, h => (h > 8 ? 0.6 : 1) / h) }] },
+  { id: 'flute', name: 'Flute', attack: 0.06, sustain: 0.85, decay: 0.4, release: 0.08, level: 1,
+    layers: [{ amps: [1, 0.3, 0.1, 0.04] }] },
+  { id: 'clarinet', name: 'Clarinet', attack: 0.03, sustain: 0.85, decay: 0.5, release: 0.07, level: 0.84,
+    layers: [{ amps: harmonics(15, h => h % 2 ? 1 / h : 0.04 / h) }] },
+  { id: 'brass', name: 'Brass', attack: 0.045, sustain: 0.8, decay: 0.35, release: 0.09, level: 1.68,
+    layers: [{ amps: harmonics(16, h => h ** -0.8 * (h === 1 ? 0.6 : 1)) }] },
+  { id: 'sine', name: 'Pure tone', attack: 0.02, sustain: 0.8, decay: 0.4, release: 0.1, level: 1,
+    layers: [{ amps: [1] }] },
+];
+// The harmonic-series buttons always use this, whichever instrument is chosen.
+const SINE = { attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1, layers: [{ amps: [1] }] };
+let instrument = INSTRUMENTS[0];
+
+let AC = null, master = null, muted = false;
 function audio() {
   if (!AC) {
     const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
@@ -843,26 +886,37 @@ function audio() {
     const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
     master = AC.createGain(); master.gain.value = muted ? 0 : 0.9;
     master.connect(comp); comp.connect(AC.destination);
-    const N = 12, re = new Float32Array(N), im = new Float32Array(N);
-    for (let h = 1; h < N; h++) im[h] = Math.pow(h, -1.6) * (h % 2 ? 1 : 0.75);
-    wave = AC.createPeriodicWave(re, im);
+    for (const ins of [...INSTRUMENTS, SINE]) for (const layer of ins.layers) {
+      const im = new Float32Array(layer.amps.length + 1), re = new Float32Array(layer.amps.length + 1);
+      layer.amps.forEach((amp, i) => { im[i + 1] = amp; });
+      layer.wave = AC.createPeriodicWave(re, im);
+    }
   }
   if (AC.state === 'suspended') AC.resume();
   return AC;
 }
-function tone(freq, when = 0, dur = 1, vol = 0.2, sine = false) {
+// maxAttack shortens a slow attack when notes are coming too quickly for it to finish.
+function tone(freq, when = 0, dur = 1, vol = 0.2, sine = false, maxAttack = 1) {
   const a = audio(); if (!a) return null;
-  const t0 = a.currentTime + 0.03 + when;
-  const o = a.createOscillator(), g = a.createGain();
-  if (sine) o.type = 'sine'; else o.setPeriodicWave(wave);
-  o.frequency.setValueAtTime(freq, t0);
+  const ins = sine ? SINE : instrument, t0 = a.currentTime + 0.03 + when;
+  const peak = vol * ins.level, atk = Math.min(ins.attack, maxAttack), stop = t0 + dur + Math.max(1.2, ins.release * 7);
+  const g = a.createGain();
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.025);
-  g.gain.setTargetAtTime(vol * 0.55, t0 + 0.04, 0.3);
-  g.gain.setTargetAtTime(0.0001, t0 + dur, 0.14);
-  o.connect(g); g.connect(master);
-  o.start(t0); o.stop(t0 + dur + 1.2);
-  return { t0, end: t0 + dur, gain: g.gain, oscs: [o] };
+  g.gain[atk > 0.03 ? 'linearRampToValueAtTime' : 'exponentialRampToValueAtTime'](peak, t0 + atk);
+  g.gain.setTargetAtTime(Math.max(peak * ins.sustain, 0.0001), t0 + atk + 0.015, ins.decay);
+  g.gain.setTargetAtTime(0.0001, t0 + dur, ins.release);
+  g.connect(master);
+  const oscs = ins.layers.map(layer => {
+    const o = a.createOscillator(), lg = a.createGain();
+    o.setPeriodicWave(layer.wave);
+    o.frequency.setValueAtTime(freq, t0);
+    lg.gain.setValueAtTime(layer.gain || 1, t0);
+    if (layer.fade) lg.gain.setTargetAtTime(0.0001, t0, layer.fade);
+    o.connect(lg); lg.connect(g);
+    o.start(t0); o.stop(stop);
+    return o;
+  });
+  return { t0, end: t0 + dur, atk, release: ins.release, gain: g.gain, oscs };
 }
 /* Shepard tone, the "auditory barber pole": the same pitch class in every octave at once, with
    loudness following a fixed bell curve over the octaves. Gliding every octave up a fifth, the top
@@ -894,7 +948,7 @@ function shepard(c0, c1, glide, dur = 0.45, vol = 0.24, when = 0) {
     o.connect(g); g.connect(env);
     o.start(t0); o.stop(end + 0.9); oscs.push(o);
   }
-  return { t0, end, gain: env.gain, oscs };
+  return { t0, end, atk: 0.025, release: 0.14, gain: env.gain, oscs };
 }
 /* The one voice for "play this note", so a note sounds the same however you reach it: clicked, or
    scrolled to. It rings until the next note takes over, and the quicker the notes are coming the
@@ -905,8 +959,8 @@ const NOTE_MIN_GAP = 0.035;   // notes never start closer together than this, so
 let voice = null, noteClock = 0;
 function letGo(v, at, gap) {
   if (at >= v.end) return;                  // it already finished by itself
-  at = Math.max(at, v.t0 + 0.03);           // let its attack finish first
-  const tau = clamp(gap * 0.35, 0.015, 0.14);
+  at = Math.max(at, v.t0 + v.atk + 0.005);  // let its attack finish first
+  const tau = clamp(gap * 0.35, 0.015, v.release);
   v.gain.cancelScheduledValues(at);
   v.gain.setTargetAtTime(0.0001, at, tau);
   for (const o of v.oscs) try { o.stop(at + tau * 8); } catch (_) { /* some browsers allow only one stop() */ }
@@ -920,7 +974,7 @@ function playNote(k, d = 0, when = 0) {
   if (S.barber) {
     const c1 = cents(k);
     v = shepard(c1 - d * tune.fifth, c1, d ? clamp(gap * 0.9, 0.04, 0.16) : 0, NOTE_LEN, SHEP_VOL, when);
-  } else v = tone(hz(k), when, NOTE_LEN, NOTE_VOL);
+  } else v = tone(hz(k), when, NOTE_LEN, NOTE_VOL, false, gap * 0.5);
   if (voice) letGo(voice, v.t0, gap);
   voice = v;
 }
@@ -1483,7 +1537,7 @@ function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT, mag: S.magT,
-        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'),
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
   }, 300);
@@ -1503,6 +1557,7 @@ function restore() {
   if (s.chord && CHORDS.some(c => c.id === s.chord.type) && int(s.chord.root, -500, 500)) Object.assign(CH, s.chord);
   if (s.iv && int(s.iv.a, -500, 500) && int(s.iv.b, -500, 500)) { IV.a = s.iv.a; IV.b = s.iv.b; }
   if (s.introMin === true) setIntroMin(true);
+  if (typeof s.inst === 'string') setInstrument(s.inst);
   restoring = false;
   return ['note', 'key', 'interval', 'chord', 'tuning'].includes(s.lens) ? s.lens : null;
 }
@@ -1516,7 +1571,7 @@ function stopFly() { S.fly = 0; $('flyIn').classList.remove('on'); $('flyOut').c
 function toggleFly(dir) {
   if (S.fly === dir) { stopFly(); return; }
   seq++; stopFly();
-  S.fly = dir; S.flyTime = 0; S.zRate = 10; S.userDriven = true;
+  S.fly = dir; S.userDriven = true;
   $(dir > 0 ? 'flyOut' : 'flyIn').classList.add('on');
   caption(closes() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up.`
         : dir > 0 ? `Flying outward. Every lap adds more sharps, and there's no last lap.`
@@ -1532,6 +1587,22 @@ $('mute').onclick = () => {
   $('mute').classList.toggle('on', muted);
   if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, AC.currentTime, 0.02);
 };
+function setInstrument(id) {
+  instrument = INSTRUMENTS.find(i => i.id === id) || INSTRUMENTS[0];
+  $('instrument').value = instrument.id;
+  save();
+}
+$('instrument').innerHTML = INSTRUMENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+let instByMouse = false;       // after picking with the mouse, let go so the arrow keys move the spiral again
+$('instrument').addEventListener('pointerdown', () => { instByMouse = true; });
+$('instrument').addEventListener('keydown', () => { instByMouse = false; });
+$('instrument').addEventListener('change', e => {
+  setInstrument(e.target.value);
+  tone(hz(S.sel), 0, NOTE_LEN, NOTE_VOL); pulse(S.sel);     // let you hear what you picked
+  if (S.barber) caption(`Barber pole keeps its own sound. Turn it off to hear the ${instrument.name.toLowerCase()} while you scroll.`, 5000);
+  if (instByMouse) e.target.blur();
+  instByMouse = false;
+});
 $('auto').onclick = () => {
   S.autoplay = !S.autoplay;
   $('auto').classList.toggle('on', S.autoplay);
@@ -1763,7 +1834,7 @@ cv.addEventListener('pointercancel', endPointer);
 cv.addEventListener('pointerleave', () => { if (!pointers.size) { S.hover = null; cv.classList.remove('point'); showTip(null); } });
 
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key.startsWith('Arrow') && e.target.closest('#why')) return;   // there they scroll the text
   if (e.target.getAttribute('role') === 'tab' && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
     const i = tabBtns.indexOf(e.target), n = tabBtns.length;
@@ -1773,8 +1844,10 @@ addEventListener('keydown', e => {
   }
   const step = e.shiftKey ? tune.lap : 1;
   switch (e.key) {
-    case 'ArrowRight': case 'ArrowUp':   keyStep(step); break;
-    case 'ArrowLeft':  case 'ArrowDown': keyStep(-step); break;
+    case 'ArrowRight': keyStep(step); break;
+    case 'ArrowLeft':  keyStep(-step); break;
+    case 'ArrowUp':    keyStep(12); break;
+    case 'ArrowDown':  keyStep(-12); break;
     case 'Enter': case ' ':
       if (e.target !== cv && e.target !== document.body) return;
       e.preventDefault(); onNoteClick(noteHere());
@@ -1797,12 +1870,13 @@ addEventListener('keydown', e => {
 });
 
 /* ---------- main loop ---------- */
+const FLY_RATE = 3;         // the Flats and Sharps buttons travel at a steady 3 notes a second
 const AUTO_RATE = 22;       // fastest travel with auto-play on: 22 notes a second
 const AUTO_BACKLOG = 36;    // most notes that fast scrolling can queue up ahead of the view
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.25, (now - last) / 1000); last = now;
-  if (S.fly) { S.flyTime += dt; S.zT += S.fly * Math.min(18, 4 + S.flyTime * 1.6) * dt; }
+  if (S.fly) { S.z += S.fly * FLY_RATE * dt; S.zT = S.z; }   // straight along, at one steady speed
   let dz = (S.zT - S.z) * (1 - Math.exp(-dt * S.zRate));
   if (S.autoplay && S.userDriven) {
     const zr = Math.round(S.z);
