@@ -362,7 +362,7 @@
     <li><b>Going around</b> is distance travelled in fifths. With pure fifths one step is 30.08°, a hair more than a twelfth of a turn, so a lap of 12 comes to 361°. Each note sits about 1° past its partner one lap in. That sliver is the comma.</li>
     <li><b>Out and in</b> are sharps and flats. It's a logarithmic spiral: every lap is the same shape at a different size, so there are infinitely many laps in both directions and it never reaches the centre.</li>
     <li><b>Colour:</b> ivory for naturals, warm for sharps, cool for flats. Deeper colour means more accidentals. <span class="acc">♯</span><sup>5</sup> means five sharps.</li>
-    <li><b>Gold rings</b> mark the notes a whole lap away from the selected one. With 12 notes per lap they share its piano key: same key, different notes.</li>
+    <li>A <b>green ring</b> marks the selected note, and dashed green rings mark the notes a whole lap away from it. With 12 notes per lap they share its piano key: same key, different notes.</li>
     <li>The faint <b>spokes</b> are where the notes would sit if the circle closed. With 12 per lap they're the piano's keys as an ordinary circle of fifths.</li>
   </ul>
 
@@ -648,6 +648,8 @@ function badge(k, text, fill) {
   const ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, fs = clamp(dr * 0.45, 10, 13), off = dr + fs * 1.05;
   pill(g.x + ux * off, g.y + uy * off, text, fill, fs);
 }
+// The selection colour: green, because no note is green, so it stands out on naturals, sharps and flats.
+const SEL_RGB = '61,240,138', SEL = `rgb(${SEL_RGB})`;
 function ringAt(k, color, width, pad, dash) {
   const L = tune.lap, g = geom(k), dr = (FT > 0.5 ? R0 : g.r) * DOTL;
   if (dr < 1.5 || k < VIS.kLo - L || k > VIS.kHi + L) return;
@@ -686,7 +688,7 @@ function lensOver() {
   if (S.lens === 'key') {
     for (const t of scaleTones()) if (t.deg) badge(t.k, t.deg, t.k === KEY.tonic ? GOLD : IVORY);
     const dr = geom(KEY.tonic).r * DOTL;
-    ringAt(KEY.tonic, GOLD, Math.max(2, dr * 0.08), Math.max(3, dr * 0.14));
+    ringAt(KEY.tonic, SEL, Math.max(2, dr * 0.08), Math.max(3, dr * 0.14));
   } else if (S.lens === 'interval') {
     badge(IV.a, '1', GOLD);
     if (IV.b !== null) {
@@ -761,12 +763,12 @@ function draw(now) {
 
   lensUnder();
 
-  // gold thread through the notes a whole lap away from the selected one
+  // a dashed thread through the notes a whole lap away from the selected one
   const showSel = S.lens === 'note' || S.lens === 'tuning';
   const fam = [];
   if (showSel) for (let k = kLo + mod(S.sel - kLo, L); k <= kHi; k += L) fam.push(k);
   if (ft < 1 && fam.length > 1) {
-    ctx.strokeStyle = `rgba(242,196,109,${0.28 * (1 - ft)})`; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = `rgba(${SEL_RGB},${0.28 * (1 - ft)})`; ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 5]);
     ctx.beginPath();
     fam.forEach((k, i) => { const g = geom(k); i ? ctx.lineTo(g.x, g.y) : ctx.moveTo(g.x, g.y); });
@@ -823,12 +825,12 @@ function draw(now) {
   // rings: same-lap family, hover, selection, pulses
   for (const k of fam) if (k !== S.sel) {
     const dr = geom(k).r * DOTL;
-    ringAt(k, 'rgba(242,196,109,0.6)', Math.max(1, dr * 0.05), Math.max(2, dr * 0.1), [4, 3]);
+    ringAt(k, `rgba(${SEL_RGB},0.6)`, Math.max(1, dr * 0.05), Math.max(2, dr * 0.1), [4, 3]);
   }
   if (S.hover !== null && S.hover !== S.sel) ringAt(S.hover, 'rgba(255,255,255,0.6)', 1.5, 3);
   if (showSel) {
     const dr = (ft > 0.5 ? R0 : geom(S.sel).r) * DOTL;
-    ringAt(S.sel, '#f2c46d', Math.max(2, dr * 0.07), Math.max(3, dr * 0.14));
+    ringAt(S.sel, SEL, Math.max(2, dr * 0.07), Math.max(3, dr * 0.14));
   }
   S.pulses = S.pulses.filter(p => now - p.t0 < 900);
   for (const p of S.pulses) {
