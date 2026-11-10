@@ -318,6 +318,9 @@
         <button id="lapDown" aria-label="Fewer notes per lap">−</button><output id="lapV"></output><button id="lapUp" aria-label="More notes per lap">+</button>
       </div>
       <p class="sub" id="tLap"></p>
+      <div class="field" id="tView">Draw it as
+        <span class="group seg" role="group" aria-label="How to draw a tuning that closes"><button data-view="circle">One circle</button><button data-view="rings">Rings</button></span>
+      </div>
       <p class="note" id="tBlurb"></p>
       <div class="lbl">Why 12?</div>
       <div class="sub small">How far <i>n</i> fifths land from the nearest whole number of octaves. Short bars are near misses, and the gold ones beat every smaller <i>n</i>. Click a bar to use that many notes per lap.</div>
@@ -343,7 +346,7 @@
   <p>To land exactly back home you'd need <span class="math">3<sup>a</sup> = 2<sup>b</sup></span> for some whole numbers <i>a</i> and <i>b</i>. But every power of 3 is odd and every power of 2 is even, so they can never be equal. There are near misses (53 fifths overshoot 31 octaves by only 3.6 cents), but a miss is a miss. The spiral goes on forever outward, adding sharps, and forever inward, adding flats.</p>
 
   <h3>4 · How the piano fakes a circle</h3>
-  <p>Equal temperament makes every fifth 700 cents instead of 701.955, shaving <b>1.955 cents</b> off each one. Twelve shaved fifths make exactly seven octaves. The comma gets spread too thinly to notice, and the spiral is squashed flat into the familiar 12-note circle, where B<span class="acc">♯</span>, C and D<span class="acc">𝄫</span> all become one key. Press <b>Equal temperament</b> to watch it collapse, or try other tunings in the <b>Tuning</b> tab.</p>
+  <p>Equal temperament makes every fifth 700 cents instead of 701.955, shaving <b>1.955 cents</b> off each one. Twelve shaved fifths make exactly seven octaves. The comma gets spread too thinly to notice, and the spiral is squashed flat into the familiar 12-note circle, where B<span class="acc">♯</span>, C and D<span class="acc">𝄫</span> all become one key. Press <b>Equal temperament</b> to watch it collapse. Press <b>ET rings</b> to keep each lap on a ring of its own instead: the rings line up on 12 spokes, one for each piano key, so B<span class="acc">♯</span>, C and D<span class="acc">𝄫</span> share a spoke. Or try other tunings in the <b>Tuning</b> tab.</p>
 
   <h3>5 · Where the 3 : 2 comes from</h3>
   <p>Every note an instrument plays is really a stack of <i>harmonics</i>: whole-number multiples of its lowest frequency. Here are the first eight for a low C. Click one to hear it on its own.</p>
@@ -363,7 +366,7 @@
     <li><b>Out and in</b> are sharps and flats. It's a logarithmic spiral: every lap is the same shape at a different size, so there are infinitely many laps in both directions and it never reaches the centre.</li>
     <li><b>Colour:</b> ivory for naturals, warm for sharps, cool for flats. Deeper colour means more accidentals. <span class="acc">♯</span><sup>5</sup> means five sharps.</li>
     <li>A <b>green ring</b> marks the selected note, and dashed green rings mark the notes a whole lap away from it. With 12 notes per lap they share its piano key: same key, different notes.</li>
-    <li>The faint <b>spokes</b> are where the notes would sit if the circle closed. With 12 per lap they're the piano's keys as an ordinary circle of fifths.</li>
+    <li>The faint <b>spokes</b> are where the notes would sit if the circle closed. With 12 per lap they're the piano's keys as an ordinary circle of fifths. In <b>ET rings</b> every note sits exactly on one, a ring for each lap.</li>
   </ul>
 
   <h3>Exploring with the tabs</h3>
@@ -380,7 +383,7 @@
     <li><b>Instrument</b> and <b>Volume</b>, in the bottom bar: the sound notes are played with, and how loud. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
-    <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
+    <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>R</b> equal temperament as one circle ↔ rings · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
     <li>Your tuning, tab, zoom, key and chord are remembered for next time. <button id="resetAll" style="margin-top:4px">Reset everything</button></li>
   </ul>
 
@@ -401,7 +404,8 @@
   <span class="sep"></span>
   <div class="group seg" role="group" aria-label="Tuning">
     <button id="pure" class="on" title="Pythagorean tuning: pure 3:2 fifths (T)">Pure fifths</button>
-    <button id="temp" title="12-note equal temperament (T)">Equal temperament</button>
+    <button id="temp" title="12-note equal temperament, drawn as one circle of 12 keys (T)">Equal temperament</button>
+    <button id="rings" title="12-note equal temperament, drawn as rings: each lap of names gets its own ring, and they all line up on 12 spokes, one for each piano key (R)">ET rings</button>
   </div>
   <span class="sep"></span>
   <label class="group mag" title="Zoom the whole picture in or out (pinch, + and − keys, 0 to reset)">Zoom
@@ -436,6 +440,7 @@
 const LOG2_15 = Math.log2(1.5);
 const PURE    = 1200 * LOG2_15;              // a pure 3:2 fifth: 701.955 ¢
 const GROWTH  = 2.3, LNG = Math.log(GROWTH); // the spiral gets 2.3× wider each lap
+const RGAP    = 0.34, RDOT = 0.118;          // rings view: gap between rings, and note size, as fractions of the home ring
 const C4      = 261.6256;
 const LETTERS = 'FCGDAEB';
 const KEY_NAMES = ['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'];
@@ -539,6 +544,7 @@ const S = {
   z: 30, zT: 0, zRate: 1.8,   // z: which note sits on the home ring (intro: unwinds from 30 to 0)
   zl: 0, zlT: 0,              // zoom, as a power of two (0 = ×1, 1 = ×2, −1 = ×½)
   t: 0, tT: 0,                // 0 = spiral, 1 = closed circle (when the tuning closes)
+  g: 0, gT: 0, rings: false,  // a tuning that closes can be drawn as rings instead: g 0 = one circle, 1 = rings
   sel: 0, hover: null,
   fly: 0,
   autoplay: true,             // auto-play starts on, unless you turned it off last visit
@@ -546,6 +552,8 @@ const S = {
   lens: 'note',
   pulses: [],
 };
+// The tuning closes and is drawn as one circle, so each dot is a whole key, all its names glued together.
+const merged = () => S.tT > 0.5 && S.gT < 0.5;
 const KEY = { tonic: 0, size: 7, pos: 1 };          // pos = tonic's place in the window, counted in fifths
 const IV  = { a: 0, b: 4, next: 'a' };
 const CH  = { root: 0, type: 'maj' };
@@ -558,7 +566,7 @@ if (reduceMotion) S.z = 0;
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
 let W, H, CX, CY, R0, RBASE, DPR;
-let DOTL = 0.15, FONTL = 0.12, STEP = 30, FT = 0, VIS = { kLo: 0, kHi: 0 };
+let DOTL = 0.15, DOTR = 0.22, FONTL = 0.12, STEP = 30, FT = 0, VIS = { kLo: 0, kHi: 0 };
 let slotNames = [];
 
 function resize() {
@@ -575,8 +583,8 @@ function resize() {
   RBASE = (mobile ? 0.2 : 0.19) * Math.min(W, bottom - top);
   R0 = homeRadius();
 }
-// radius of the home ring: the zoom, and a closed circle is drawn bigger than the spiral's home ring
-function homeRadius() { return RBASE * Math.pow(2, S.zl) * (1 + 0.9 * S.t); }
+// radius of the home ring: the zoom, and a closed circle (or the rings) drawn bigger than the spiral's home ring
+function homeRadius() { return RBASE * Math.pow(2, S.zl) * (1 + 0.9 * Math.max(0, S.t - S.g) + 0.35 * S.g); }
 addEventListener('resize', () => { resize(); drawMiss(); });
 
 // angle per fifth: one lap = `lap` fifths ≈ a whole number of octaves; the leftover is the drift
@@ -584,10 +592,29 @@ function computeStep() {
   const base = 360 / tune.lap, real = 360 * tune.fifth / (1200 * lapOct());
   STEP = base + (1 - S.t) * (real - base);
 }
+/* Rings view: which ring a note is on. Ring 0 holds the plainest name of every key (D♭ to F♯ with 12
+   per lap), and each lap out or in is the next ring. (In between two notes, as a key-tab band needs,
+   it steps across during the one fifth that crosses from one ring to the next.) */
+let RING0 = -5;
+function ringPos(k) {
+  const L = tune.lap, q = k - RING0 + 1, m = Math.floor(q / L), f = q - m * L;
+  return f < 1 ? m - 1 + f * f * (3 - 2 * f) : m;
+}
+// radius of ring position p in the rings view: evenly spaced, sliding a ring inward for every lap you travel out
+const ringR = p => R0 * (1 + RGAP * (p - S.z / tune.lap));
+// where note k is drawn: x, y, distance from the centre r, dot radius dr and opacity a
 function geom(k) {
-  const r = R0 * Math.exp(LNG * (1 - S.t) * (k - S.z) / tune.lap);
-  const th = k * STEP * Math.PI / 180;
-  return { x: CX + r * Math.sin(th), y: CY - r * Math.cos(th), r };
+  const L = tune.lap, th = k * STEP * Math.PI / 180;
+  let r = R0 * Math.exp(LNG * (1 - S.t) * (k - S.z) / L), dr = r * DOTL, a = 1;
+  if (S.g) {
+    // rings: every note the same size, unless its ring is too small to fit them; rings fade out
+    // as they shrink into the centre, and new ones grow out of it
+    const rr = Math.max(0, ringR(ringPos(k))), gap = RGAP * R0;
+    r += (rr - r) * S.g;
+    dr += (Math.min(RDOT * R0, rr * DOTR) - dr) * S.g;
+    a = 1 - S.g * (1 - smooth(0.25 * gap, 0.75 * gap, rr));
+  }
+  return { x: CX + r * Math.sin(th), y: CY - r * Math.cos(th), r, dr, a };
 }
 
 function noteColor(acc) {
@@ -617,18 +644,19 @@ function drawLabel(k, x, y, f, dr) {
 }
 
 // a band that follows the spiral from k0 to k1; hw = half-width as a fraction of the radius
+// (in the spiral; elsewhere it keeps the same width relative to the notes)
 function ribbon(k0, k1, hw) {
   const step = tune.lap / 60, ks = [];
   for (let k = k0; ; k += step) { const kk = Math.min(k, k1); ks.push(kk); if (kk >= k1) break; }
-  const pts = ks.map(k => geom(k)).filter(g => g.r > 0.3);
+  const pts = ks.map(k => geom(k)).filter(g => g.r > 0.3 && g.a > 0.05);
   if (pts.length < 2) return false;
   ctx.beginPath();
   pts.forEach((g, i) => {
-    const h = g.r * hw, x = g.x + (g.x - CX) / g.r * h, y = g.y + (g.y - CY) / g.r * h;
+    const h = g.dr * hw / DOTL, x = g.x + (g.x - CX) / g.r * h, y = g.y + (g.y - CY) / g.r * h;
     i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   });
   for (let i = pts.length - 1; i >= 0; i--) {
-    const g = pts[i], h = g.r * hw;
+    const g = pts[i], h = g.dr * hw / DOTL;
     ctx.lineTo(g.x - (g.x - CX) / g.r * h, g.y - (g.y - CY) / g.r * h);
   }
   ctx.closePath();
@@ -647,16 +675,16 @@ function pill(x, y, text, fill, fs = 11) {
 }
 // small label just outside a note, away from the centre
 function badge(k, text, fill) {
-  const g = geom(k), dr = g.r * DOTL;
-  if (dr < 4 || g.x < -40 || g.x > W + 40 || g.y < -40 || g.y > H + 40) return;
+  const g = geom(k), dr = g.dr;
+  if (dr < 4 || g.a < 0.5 || g.x < -40 || g.x > W + 40 || g.y < -40 || g.y > H + 40) return;
   const ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, fs = clamp(dr * 0.45, 10, 13), off = dr + fs * 1.05;
   pill(g.x + ux * off, g.y + uy * off, text, fill, fs);
 }
 // The selection colour: green, because no note is green, so it stands out on naturals, sharps and flats.
 const SEL_RGB = '61,240,138', SEL = `rgb(${SEL_RGB})`;
 function ringAt(k, color, width, pad, dash) {
-  const L = tune.lap, g = geom(k), dr = (FT > 0.5 ? R0 : g.r) * DOTL;
-  if (dr < 1.5 || k < VIS.kLo - L || k > VIS.kHi + L) return;
+  const L = tune.lap, g = geom(k), dr = FT > 0.5 ? R0 * DOTL : g.dr;
+  if (dr < 1.5 || (FT <= 0.5 && g.a < 0.3) || k < VIS.kLo - L || k > VIS.kHi + L) return;
   const a = mod(k, L) * 2 * Math.PI / L;
   const gx = FT > 0.5 ? CX + R0 * Math.sin(a) : g.x, gy = FT > 0.5 ? CY - R0 * Math.cos(a) : g.y;
   ctx.strokeStyle = color; ctx.lineWidth = width;
@@ -691,7 +719,7 @@ function lensOver() {
   const GOLD = '#f2c46d', IVORY = 'rgba(235,231,219,0.92)';
   if (S.lens === 'key') {
     for (const t of scaleTones()) if (t.deg) badge(t.k, t.deg, t.k === KEY.tonic ? GOLD : IVORY);
-    const dr = geom(KEY.tonic).r * DOTL;
+    const dr = geom(KEY.tonic).dr;
     ringAt(KEY.tonic, SEL, Math.max(2, dr * 0.08), Math.max(3, dr * 0.14));
   } else if (S.lens === 'interval') {
     badge(IV.a, '1', GOLD);
@@ -699,8 +727,8 @@ function lensOver() {
       badge(IV.b, '2', GOLD);
       const d = IV.b - IV.a;
       if (d) {
-        const g = geom((IV.a + IV.b) / 2), ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, off = g.r * DOTL * 1.9;
-        if (g.r * DOTL > 4) pill(g.x + ux * off, g.y + uy * off, `${fmtInt(d)} ${d > 0 ? 'out' : 'in'}`, IVORY, 11);
+        const g = geom((IV.a + IV.b) / 2), ux = (g.x - CX) / g.r, uy = (g.y - CY) / g.r, off = g.dr * 1.9;
+        if (g.dr > 4 && g.a > 0.5) pill(g.x + ux * off, g.y + uy * off, `${fmtInt(d)} ${d > 0 ? 'out' : 'in'}`, IVORY, 11);
       }
     }
   } else if (S.lens === 'chord') {
@@ -715,7 +743,7 @@ let drawn = [];
 function draw(now) {
   computeStep();
   const L = tune.lap;
-  const ft = FT = smooth(0.45, 0.95, S.t);           // crossfade spiral -> circle
+  const ft = FT = smooth(0.45, 0.95, Math.max(0, S.t - S.g));   // crossfade spiral or rings -> one circle
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 
   const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.hypot(W, H) * 0.62);
@@ -724,9 +752,10 @@ function draw(now) {
 
   const rMax = Math.hypot(Math.max(CX, W - CX), Math.max(CY, H - CY));
 
-  // spokes: where the notes would sit if the circle closed (12 per lap = the piano's keys)
+  // spokes: where the notes would sit if the circle closed (12 per lap = the piano's keys).
+  // In the rings view every note sits on one, so they're drawn brighter.
   ctx.lineWidth = 1.2;
-  ctx.strokeStyle = `rgba(255,255,255,${(0.1 * Math.min(1, 12 / L)).toFixed(3)})`;
+  ctx.strokeStyle = `rgba(255,255,255,${(0.1 * Math.min(1, 12 / L) * (1 + 1.3 * S.g)).toFixed(3)})`;
   ctx.beginPath();
   for (let s = 0; s < L; s++) {
     const a = s * 2 * Math.PI / L;
@@ -741,13 +770,30 @@ function draw(now) {
     kLo = Math.max(kLo, S.z + Math.log(1 / R0) / ln);
     kHi = Math.min(kHi, S.z + Math.log(rMax * 1.3 / R0) / ln);
   }
+  // rings view: from the ring that's just growing out of the centre to the first one past the edge
+  const mLo = Math.floor(S.z / L - 1 / RGAP), mHi = Math.ceil(S.z / L + (rMax / R0 - 1) / RGAP);
+  if (S.g === 1) { kLo = RING0 + L * mLo; kHi = RING0 + L * (mHi + 1) - 1; }
+  else if (S.g) { kLo = Math.min(kLo, RING0 + L * mLo); kHi = Math.max(kHi, RING0 + L * (mHi + 1) - 1); }
   kLo = Math.floor(kLo); kHi = Math.ceil(kHi);
   VIS = { kLo, kHi };
 
+  // rings view: a circle for each lap, the one with the plainest names a little brighter
+  const ringA = S.g * (1 - ft);
+  if (ringA > 0.01) {
+    for (let m = mLo; m <= mHi; m++) {
+      const g = geom(RING0 + m * L);
+      if (g.a < 0.01) continue;
+      ctx.strokeStyle = `rgba(242,196,109,${((m === 0 ? 0.5 : 0.22) * ringA * g.a).toFixed(3)})`;
+      ctx.lineWidth = m === 0 ? 2 : 1.3;
+      ctx.beginPath(); ctx.arc(CX, CY, g.r, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
   // the spiral line: a soft glow pass, then a bright core. Each note-to-note stretch is a single
   // stroke, so the line never overlaps itself (overlaps showed up as beads in the see-through glow);
-  // the joins between stretches sit under the notes.
-  if (ft < 1) {
+  // the joins between stretches sit under the notes. The rings view has no line.
+  const lineA = (1 - ft) * (1 - S.g);
+  if (lineA > 0.01) {
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const sub = Math.max(1, Math.ceil(60 / L));          // points per stretch, so it stays a smooth curve
     for (const [wMul, wMin, a] of [[0.085, 2, 0.13], [0.03, 1, 0.85]]) {
@@ -756,7 +802,7 @@ function draw(now) {
         for (let j = 0; j <= sub; j++) pts.push(geom(k + j / sub));
         const xs = pts.map(p => p.x), ys = pts.map(p => p.y), m = geom(k + 0.5);
         if (pts[sub].r <= 0.6 || Math.max(...xs) < -50 || Math.min(...xs) > W + 50 || Math.max(...ys) < -50 || Math.min(...ys) > H + 50) continue;
-        ctx.strokeStyle = lineColor(k + 0.5, a * (1 - ft) * Math.min(1, m.r / 6));
+        ctx.strokeStyle = lineColor(k + 0.5, a * lineA * Math.min(1, m.r / 6));
         ctx.lineWidth = Math.max(wMin * Math.min(1, m.r / 20), m.r * wMul * Math.min(1, DOTL / 0.15));
         ctx.beginPath();
         pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
@@ -770,7 +816,7 @@ function draw(now) {
   // a dashed thread through the notes a whole lap away from the selected one
   const showSel = S.lens === 'note' || S.lens === 'tuning';
   const fam = [];
-  if (showSel) for (let k = kLo + mod(S.sel - kLo, L); k <= kHi; k += L) fam.push(k);
+  if (showSel) for (let k = kLo + mod(S.sel - kLo, L); k <= kHi; k += L) if (geom(k).a > 0.3) fam.push(k);
   if (ft < 1 && fam.length > 1) {
     ctx.strokeStyle = `rgba(${SEL_RGB},${0.28 * (1 - ft)})`; ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 5]);
@@ -785,15 +831,15 @@ function draw(now) {
   const noteA = 1 - ft;
   if (noteA > 0.01) {
     for (let k = kLo; k <= kHi; k++) {
-      const g = geom(k), dr = g.r * DOTL;
-      if (dr < 0.45 || g.x + dr < 0 || g.x - dr > W || g.y + dr < 0 || g.y - dr > H) continue;
-      ctx.globalAlpha = noteA;
+      const g = geom(k), dr = g.dr, A = noteA * g.a;
+      if (dr < 0.45 || A < 0.01 || g.x + dr < 0 || g.x - dr > W || g.y + dr < 0 || g.y - dr > H) continue;
+      ctx.globalAlpha = A;
       ctx.fillStyle = noteColor(spell(k).acc);
       ctx.beginPath(); ctx.arc(g.x, g.y, dr, 0, Math.PI * 2); ctx.fill();
       // the name fills more of the circle as the circle shrinks, so small notes stay named for longer
       const f = Math.min(64, dr * (0.8 + 0.3 * smooth(14, 6, dr)));
-      if (f >= 5) { ctx.globalAlpha = noteA * smooth(5, 6.5, f); drawLabel(k, g.x, g.y, f, dr); }
-      if (noteA > 0.4) drawn.push({ k, x: g.x, y: g.y, dr });
+      if (f >= 5) { ctx.globalAlpha = A * smooth(5, 6.5, f); drawLabel(k, g.x, g.y, f, dr); }
+      if (A > 0.4) drawn.push({ k, x: g.x, y: g.y, dr });
     }
     ctx.globalAlpha = 1;
   }
@@ -829,19 +875,19 @@ function draw(now) {
 
   // rings: same-lap family, hover, selection, pulses
   for (const k of fam) if (k !== S.sel) {
-    const dr = geom(k).r * DOTL;
+    const dr = geom(k).dr;
     ringAt(k, `rgba(${SEL_RGB},0.6)`, Math.max(1, dr * 0.05), Math.max(2, dr * 0.1), [4, 3]);
   }
   if (S.hover !== null && S.hover !== S.sel) ringAt(S.hover, 'rgba(255,255,255,0.6)', 1.5, 3);
   if (showSel) {
-    const dr = (ft > 0.5 ? R0 : geom(S.sel).r) * DOTL;
+    const dr = ft > 0.5 ? R0 * DOTL : geom(S.sel).dr;
     ringAt(S.sel, SEL, Math.max(2, dr * 0.07), Math.max(3, dr * 0.14));
   }
   S.pulses = S.pulses.filter(p => now - p.t0 < 900);
   for (const p of S.pulses) {
     if (now < p.t0) continue;
     const u = (now - p.t0) / 900;
-    const dr = (ft > 0.5 ? R0 : geom(p.k).r) * DOTL;
+    const dr = ft > 0.5 ? R0 * DOTL : geom(p.k).dr;
     ringAt(p.k, `rgba(255,226,166,${(1 - u) * 0.9})`, 2.5 * (1 - u) + 0.5, dr * (0.15 + 0.9 * u));
   }
 }
@@ -1048,8 +1094,12 @@ function ensureVisible(k) { if (Math.abs(k - S.z) > tune.lap * 1.3) goTo(k); }
 let lastDepth = '';
 function updateDepth() {
   let html;
-  if (S.tT > 0.5) html = `${tuningName()}: <b>${tune.lap} keys</b>, the spiral closed into a circle.`;
-  else {
+  if (merged()) html = `${tuningName()}: <b>${tune.lap} keys</b>, the spiral closed into a circle.`;
+  else if (S.gT > 0.5) {
+    const k = Math.round(S.z), m = Math.round(ringPos(k));
+    html = m === 0 ? `Rings: <b>home ring</b>, around ${nameHTML(k)}`
+      : `Rings: <b>${plural(m, 'ring')} ${m > 0 ? 'out (sharps)' : 'in (flats)'}</b> · around ${nameHTML(k)}`;
+  } else {
     const laps = S.z / tune.lap, k = Math.round(S.z);
     if (Math.abs(laps) < 0.05) html = `Depth: <b>home</b>, around C`;
     else html = `Depth: <b>${Math.abs(laps).toFixed(1)} laps ${laps > 0 ? 'out (sharps)' : 'in (flats)'}</b> · around ${nameHTML(k)}`;
@@ -1370,14 +1420,18 @@ function computeSlots() {
     ks.sort((a, b) => Math.abs(spell(a).acc) - Math.abs(spell(b).acc) || Math.abs(a) - Math.abs(b) || b - a);
     return ks.slice(0, 3);
   });
+  RING0 = Math.min(...slotNames.map(n => n[0]));   // the rings view's home ring starts here
 }
 function applyTuning() {
   DOTL = Math.min(0.15, 0.92 * Math.sin(Math.PI / tune.lap)); FONTL = DOTL * 0.8;
+  DOTR = 0.88 * Math.sin(Math.PI / tune.lap);       // rings view: largest notes that fit side by side on a ring
   computeSlots();
   S.tT = closes() ? 1 : 0;
-  const p = exactPreset();
+  S.gT = closes() && S.rings ? 1 : 0;
+  const p = exactPreset(), et12 = !!p && p.id === '12';
   $('pure').classList.toggle('on', !!p && p.id === 'pyth');
-  $('temp').classList.toggle('on', !!p && p.id === '12');
+  $('temp').classList.toggle('on', et12 && !S.rings);
+  $('rings').classList.toggle('on', et12 && S.rings);
   $('stack').textContent = `Stack ${tune.lap} fifths`;
   refreshAll();
 }
@@ -1387,6 +1441,23 @@ function applyPreset(id, quiet) {
   const p = PRESETS.find(x => x.id === id);
   tune.fifth = p.fifth; tune.lap = p.lap; applyTuning();
   if (!quiet) caption(`<b>${p.name}.</b> ${p.blurb}`, 9000);
+}
+/* A tuning that closes can be drawn as one circle of keys, or as rings: one ring per lap of names,
+   all lined up on the same spokes. The single circle looks the same however many laps out you are,
+   so when it opens into rings, start on the lap where the key you're on has its plainest name
+   (C, not B♯ or D𝄫). */
+function drawAs(rings, preset) {
+  const free = S.t > 0.999 && S.g < 0.001;          // showing the single circle right now
+  S.rings = rings;
+  if (preset) applyPreset(preset, true); else applyTuning();
+  if (rings && free && closes()) {
+    const k = Math.round(S.zT), d = slotNames[mod(k, tune.lap)][0] - k;
+    S.z += d; S.zT += d; S.lastK += d;
+  }
+}
+function ringsCaption() {
+  const L = tune.lap, same = slotNames[0].map(nameHTML);
+  caption(`<b>${tuningName()}, drawn as rings.</b> Each lap of ${L} names gets a ring of its own, flats inside and sharps outside. Every fifth turns exactly ${+(360 / L).toFixed(2)}°, so the rings line up on ${L} spokes, one for each key: ${same.slice(0, -1).join(', ')} and ${same[same.length - 1]} share C's spoke, one pitch with ${same.length} names. Scroll to bring the next ring in.`, 9000);
 }
 function updateTuningUI() {
   const f = tune.fifth, L = tune.lap, O = lapOct(), c = lapComma(), ex = exactPreset(), fp = fifthPreset();
@@ -1400,6 +1471,8 @@ function updateTuningUI() {
   $('tLap').innerHTML = closes()
     ? `${L} fifths make exactly ${plural(O, 'octave')}, so the spiral <b>closes</b> into a circle of ${L} notes: ${nameHTML(L)} and C are the same pitch.`
     : `${L} fifths come to ${plural(O, 'octave')} ${c > 0 ? '+' : '−'} ${Math.abs(c).toFixed(2)} ¢, so each lap ${c > 0 ? 'overshoots' : 'falls short of'} where it started: ${nameHTML(L)} lands ${Math.abs(c).toFixed(2)} ¢ ${c > 0 ? 'above' : 'below'} C.${c < 0 ? ' The drift runs the other way round.' : ''}`;
+  $('tView').style.display = closes() ? '' : 'none';
+  $('tView').querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.view === 'rings') === S.rings));
   $('tBlurb').innerHTML = fp ? fp.blurb + (ex ? '' : ` <span class="dim">(Shown here with ${L} notes per lap.)</span>`)
     : 'A custom fifth. Watch the near-miss chart to see which lap sizes come closest to closing.';
   drawMiss();
@@ -1568,7 +1641,14 @@ function setIntroMin(min) {
 $('introMin').onclick = () => { setIntroMin(!$('intro').classList.contains('min')); save(); };
 
 $('pure').onclick = () => applyPreset('pyth');
-$('temp').onclick = () => { stopFly(); applyPreset('12'); };
+$('temp').onclick = () => { stopFly(); drawAs(false, '12'); const p = exactPreset(); caption(`<b>${p.name}.</b> ${p.blurb}`, 9000); };
+$('rings').onclick = () => { stopFly(); drawAs(true, '12'); ringsCaption(); };
+function toggleRings() {   // the R key
+  if (!closes()) { $('rings').click(); return; }
+  stopFly(); drawAs(!S.rings);
+  if (S.rings) ringsCaption();
+  else caption(`<b>${tuningName()}, drawn as one circle.</b> Each dot is one key, with all its names glued together.`, 6000);
+}
 
 // zoom: the slider works in powers of two so each step feels the same size, in or out
 const ZMIN = -1.5, ZMAX = 2;
@@ -1594,7 +1674,7 @@ function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT,
-        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume, auto: S.autoplay,
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume, auto: S.autoplay, rings: S.rings,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
   }, 300);
@@ -1616,6 +1696,7 @@ function restore() {
   if (typeof s.inst === 'string') setInstrument(s.inst);
   if (num(s.vol, 0, 1)) setVolume(s.vol);
   if (typeof s.auto === 'boolean') S.autoplay = s.auto;
+  if (typeof s.rings === 'boolean') S.rings = s.rings;
   restoring = false;
   return ['note', 'key', 'interval', 'chord', 'tuning'].includes(s.lens) ? s.lens : null;
 }
@@ -1631,14 +1712,15 @@ function toggleFly(dir) {
   cancelQueued(); stopFly();
   S.fly = dir; S.userDriven = true; S.anchor = null;
   $(dir > 0 ? 'flyOut' : 'flyIn').classList.add('on');
-  caption(closes() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up.`
+  caption(merged() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up, or draw it as rings to keep each lap's names apart.`
         : S.lens === 'chord' ? `Flying ${dir > 0 ? 'outward' : 'inward'}, playing a ${chordType().name} chord on every note it passes.`
+        : S.gT > 0.5 ? `Flying ${dir > 0 ? 'outward' : 'inward'}, ring by ring. Every lap adds more ${dir > 0 ? 'sharps' : 'flats'}, but the names keep landing on the same ${tune.lap} spokes: the same ${tune.lap} keys, over and over.`
         : dir > 0 ? `Flying outward. Every lap adds more sharps, and there's no last lap.`
                   : `Flying inward. Every lap adds more flats, and you never reach the centre.`, 5000);
 }
 // On the Chord tab, Flats and Sharps play the chosen chord on every note they pass.
 function flyChord(k) {
-  setRoot(S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k, false);
+  setRoot(merged() ? slotNames[mod(k, tune.lap)][0] : k, false);
   playChord(false, 0.6);
 }
 $('flyIn').onclick = () => toggleFly(-1);
@@ -1765,6 +1847,10 @@ $('fifthR').addEventListener('input', e => {
   setFifth(f);
 });
 $('fifthN').addEventListener('change', e => { const f = parseFloat(e.target.value); if (isFinite(f)) setFifth(f); });
+$('tView').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b && (b.dataset.view === 'rings') !== S.rings) toggleRings();
+});
 $('lapDown').onclick = () => setLap(tune.lap - 1);
 $('lapUp').onclick = () => setLap(tune.lap + 1);
 
@@ -1809,7 +1895,7 @@ function viewMove() {
 }
 function stepBy(n) { S.zT = Math.round(S.zT) + n; }   // land exactly on a note
 // The note you've moved to. In a closed tuning that's the plainest name for that key, as a click gives.
-function noteHere() { const k = Math.round(S.zT); return S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k; }
+function noteHere() { const k = Math.round(S.zT); return merged() ? slotNames[mod(k, tune.lap)][0] : k; }
 /* Arrow keys carry on from the note you last clicked, even if the view is somewhere else. Getting
    there counts as a jump: the view glides past the notes between, and auto-play sounds only the one
    it lands on. A single step just moves along, and auto-play selects each note as it passes. */
@@ -1900,7 +1986,9 @@ cv.addEventListener('pointermove', e => {
   let dz = 0;
   if (pointers.size === 1) {
     const r0 = Math.hypot(prev.x - CX, prev.y - CY), r1 = Math.hypot(cur.x - CX, cur.y - CY);
-    if (r0 > 14 && r1 > 14) dz = -tune.lap * Math.log(r1 / r0) / LNG;     // grab the spiral and stretch it
+    if (r0 > 14 && r1 > 14) dz = S.gT > 0.5
+      ? -tune.lap * (r1 - r0) / (RGAP * R0)                // rings: pull the next ring in, or push it out
+      : -tune.lap * Math.log(r1 / r0) / LNG;               // grab the spiral and stretch it
   } else if (pointers.size === 2) {
     // two fingers: pinch to zoom
     const other = [...pointers.entries()].find(([id]) => id !== e.pointerId)[1];
@@ -1953,7 +2041,11 @@ addEventListener('keydown', e => {
     case 'a': $('auto').click(); break;
     case 'b': $('barber').click(); break;
     case 'Home': case 'h': $('home').click(); break;
-    case 't': applyPreset(exactPreset() && exactPreset().id === '12' ? 'pyth' : '12'); break;
+    case 't':   // pure ↔ 12-note equal temperament, drawn the way you last chose
+      if (exactPreset() && exactPreset().id === '12') applyPreset('pyth');
+      else $(S.rings ? 'rings' : 'temp').click();
+      break;
+    case 'r': toggleRings(); break;
     case '1': setLens('note'); break;
     case '2': setLens('key'); break;
     case '3': setLens('interval'); break;
@@ -1986,6 +2078,8 @@ function frame(now) {
   if (Math.abs(S.zT - S.z) < 1e-4) S.z = S.zT;
   S.t += (S.tT - S.t) * (1 - Math.exp(-dt * 3.2));
   if (Math.abs(S.tT - S.t) < 1e-4) S.t = S.tT;
+  S.g += (S.gT - S.g) * (1 - Math.exp(-dt * 3.2));
+  if (Math.abs(S.gT - S.g) < 1e-4) S.g = S.gT;
   S.zl += (S.zlT - S.zl) * (1 - Math.exp(-dt * 12));
   if (Math.abs(S.zlT - S.zl) < 1e-4) S.zl = S.zlT;
 
