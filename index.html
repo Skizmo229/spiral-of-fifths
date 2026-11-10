@@ -790,8 +790,9 @@ function draw(now) {
       ctx.globalAlpha = noteA;
       ctx.fillStyle = noteColor(spell(k).acc);
       ctx.beginPath(); ctx.arc(g.x, g.y, dr, 0, Math.PI * 2); ctx.fill();
-      const f = Math.min(64, g.r * FONTL);
-      if (f >= 7) { ctx.globalAlpha = noteA * smooth(7, 10, f); drawLabel(k, g.x, g.y, f, dr); }
+      // the name fills more of the circle as the circle shrinks, so small notes stay named for longer
+      const f = Math.min(64, dr * (0.8 + 0.3 * smooth(14, 6, dr)));
+      if (f >= 5) { ctx.globalAlpha = noteA * smooth(5, 6.5, f); drawLabel(k, g.x, g.y, f, dr); }
       if (noteA > 0.4) drawn.push({ k, x: g.x, y: g.y, dr });
     }
     ctx.globalAlpha = 1;
