@@ -370,7 +370,7 @@
   <ul>
     <li><b>Key:</b> a scale is a run of neighbouring notes on the spiral: 5 for pentatonic, 7 for major, minor and the modes, 12 for chromatic. Slide it along and the key signature changes one sharp or flat at a time.</li>
     <li><b>Interval:</b> every interval is a fixed number of fifths. A major third is always 4 steps out and a minor third 3 steps in, whatever note you start on.</li>
-    <li><b>Chord:</b> every chord type is a fixed shape, and changing key just slides it along the spiral.</li>
+    <li><b>Chord:</b> every chord type is a fixed shape, and changing key just slides it along the spiral. The chord buttons build on whichever note is selected.</li>
     <li><b>Tuning:</b> change the size of the fifth and watch the spiral open, close, or drift the other way.</li>
   </ul>
 
@@ -1156,6 +1156,7 @@ function keyChords() {
   });
 }
 function playKeyChord(c, when = 0) {
+  select(c.r, false, false); S.anchor = c.r;
   const t = CHORDS.find(x => x.id === c.type), base = midHz(hz(c.r), 150, 300);
   t.tones.forEach((d, i) => { tone(base * 2 ** (interval(d).cents / 1200), when, 0.9, 0.12); pulse(c.r + d, when * 1000); });
   tone(base / 2, when, 0.9, 0.09);
@@ -1286,7 +1287,12 @@ function updateChord() {
   $('cProgs').innerHTML = PROGS.map((p, i) => `<button data-g="${i}">${p.name}</button>`).join('');
   save();
 }
-function setRoot(k, play) { CH.root = k; updateChord(); ensureVisible(k); if (play) playChord(false); }
+// The chord's root is the selected pitch, so the chord buttons build on whichever note you've picked.
+function setRoot(k, play) {
+  CH.root = k; updateChord(); ensureVisible(k);
+  select(k, false, false); S.anchor = k;
+  if (play) playChord(false);
+}
 function playChord(arp, dur = 1.6) {
   const tones = chordTones(), base = midHz(hz(CH.root), 150, 300);
   tones.forEach((c, i) => {
@@ -1300,11 +1306,11 @@ function playProg(p) {
   const home = CH.root, homeType = CH.type;
   const steps = p.seq.map(rn => ({ rn, off: RN[rn][0], type: RN[rn][1] }));
   steps.forEach((s, i) => later(i * 1100, () => {
-    CH.root = home + s.off; CH.type = s.type; updateChord(); playChord(false, 1.0);
+    CH.root = home + s.off; CH.type = s.type; updateChord(); select(CH.root, false, false); playChord(false, 1.0);
     caption(steps.map((x, j) => j === i ? `<b>${x.rn}</b>` : x.rn).join(' → ') + ` &nbsp; ${chordLabel(home + s.off, s.type)}`, 0);
   }));
   later(steps.length * 1100 + 300, () => {
-    CH.root = home; CH.type = homeType; updateChord();
+    CH.root = home; CH.type = homeType; updateChord(); select(home, false, false);
     caption(`Roots: ${steps.map(s => nameHTML(home + s.off)).join(' → ')}. ${p.why}`, 8000);
   });
 }
@@ -1681,16 +1687,16 @@ $('iJustP').onclick = () => playInterval(true, true);
 // chord tab
 $('cTypes').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  CH.type = b.dataset.c; updateChord(); playChord(false);
+  CH.type = b.dataset.c; setRoot(S.sel, true);
 });
 $('cProgs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  playProg(PROGS[+b.dataset.g]);
+  setRoot(S.sel, false); playProg(PROGS[+b.dataset.g]);
 });
-$('cIn').onclick = () => setRoot(CH.root - 1, true);
-$('cOut').onclick = () => setRoot(CH.root + 1, true);
-$('cPlay').onclick = () => playChord(false);
-$('cArp').onclick = () => playChord(true);
+$('cIn').onclick = () => setRoot(S.sel - 1, true);
+$('cOut').onclick = () => setRoot(S.sel + 1, true);
+$('cPlay').onclick = () => setRoot(S.sel, true);
+$('cArp').onclick = () => { setRoot(S.sel, false); playChord(true); };
 
 // tuning tab
 $('tPresets').addEventListener('click', e => {
@@ -1800,7 +1806,7 @@ function onNoteClick(k) {
   seq++;
   if (S.lens === 'key') { select(k, false, false); setTonic(k, true); }
   else if (S.lens === 'interval') { select(k, false, false); pickInterval(k); }
-  else if (S.lens === 'chord') { select(k, false, false); setRoot(k, true); }
+  else if (S.lens === 'chord') setRoot(k, true);
   else select(k, true);
 }
 cv.addEventListener('pointerdown', e => {
@@ -1942,6 +1948,7 @@ function frame(now) {
 const savedLens = restore();
 applyTuning();
 if (savedLens && savedLens !== 'note') { setLens(savedLens); if (innerWidth < 760) setExplore(false); }
+if (savedLens === 'chord') select(CH.root, false, false);
 requestAnimationFrame(frame);
 })();
 </script>
