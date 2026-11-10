@@ -394,9 +394,9 @@
 
 <section id="controls" class="panel" aria-label="Spiral controls">
   <div class="group">
-    <button id="flyIn" class="fly" title="Fly inward through the flats">◂ Flats</button>
+    <button id="flyIn" class="fly" title="Fly inward through the flats, playing every note it passes">◂ Flats</button>
     <button id="home" title="Back to C (Home)">Home</button>
-    <button id="flyOut" class="fly" title="Fly outward through the sharps">Sharps ▸</button>
+    <button id="flyOut" class="fly" title="Fly outward through the sharps, playing every note it passes">Sharps ▸</button>
   </div>
   <span class="sep"></span>
   <div class="group seg" role="group" aria-label="Tuning">
@@ -422,7 +422,6 @@
     <button id="stack" title="Climb one lap of fifths from the selected note">Stack 12 fifths</button>
     <button id="auto" title="Play each note as you scroll past it (A)">Auto-play</button>
     <button id="barber" title="Auto-play with Shepard tones: the pitch seems to rise (or fall) forever, like a barber's pole (B)">Barber pole</button>
-    <button id="mute" title="Sound on/off">Sound on</button>
   </div>
 </section>
 
@@ -889,8 +888,8 @@ const INSTRUMENTS = [
 const SINE = { attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1, layers: [{ amps: [1] }] };
 let instrument = INSTRUMENTS[0];
 
-let AC = null, master = null, muted = false, volume = 1;
-const masterLevel = () => muted ? 0 : 0.9 * volume * volume;    // squared, so the slider feels even to the ear
+let AC = null, master = null, volume = 1;
+const masterLevel = () => 0.9 * volume * volume;    // squared, so the slider feels even to the ear
 function audio() {
   if (!AC) {
     const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
@@ -1632,18 +1631,13 @@ $('flyOut').onclick = () => toggleFly(1);
 $('home').onclick = () => { cancelQueued(); stopFly(); goTo(0); setZoom(0); select(0, false); };
 $('comma').onclick = hearComma;
 $('stack').onclick = stackLap;
-$('mute').onclick = () => {
-  muted = !muted; $('mute').textContent = muted ? 'Sound off' : 'Sound on';
-  $('mute').classList.toggle('on', muted);
-  if (master) master.gain.setTargetAtTime(masterLevel(), AC.currentTime, 0.02);
-};
 function setVolume(v) {
   volume = clamp(v, 0, 1);
   const pct = Math.round(volume * 100);
   $('vol').value = pct; $('volV').textContent = pct + '%'; $('vol').setAttribute('aria-valuetext', pct + '%');
   if (master) master.gain.setTargetAtTime(masterLevel(), AC.currentTime, 0.02);
 }
-$('vol').oninput = e => { if (muted) $('mute').click(); setVolume(e.target.value / 100); save(); };
+$('vol').oninput = e => { setVolume(e.target.value / 100); save(); };
 function setInstrument(id) {
   instrument = INSTRUMENTS.find(i => i.id === id) || INSTRUMENTS[0];
   $('instrument').value = instrument.id;
@@ -1668,7 +1662,6 @@ $('auto').onclick = () => {
   $('auto').classList.toggle('on', S.autoplay);
   $('auto').textContent = S.autoplay ? 'Auto-play on' : 'Auto-play';
   if (S.autoplay) {
-    if (muted) $('mute').click();
     S.lastK = Math.round(S.z); autoNote(S.lastK);
     if (!S.barber) caption(`Auto-play on: every note plays as you scroll past it. One scroll tick = one fifth.`, 5000);
   } else if (S.barber) setBarber(false);
@@ -1982,7 +1975,7 @@ function frame(now) {
   const kNow = Math.round(S.z);
   if (kNow !== S.lastK) {
     if (S.fly && S.lens === 'chord') flyChord(kNow);
-    else if (S.autoplay && S.userDriven && !S.jumping) {
+    else if (S.fly || (S.autoplay && S.userDriven && !S.jumping)) {   // Flats and Sharps always play
       const dir = Math.sign(kNow - S.lastK), n = Math.abs(kNow - S.lastK);
       for (let i = 1; i <= n; i++) autoNote(S.lastK + dir * i, dir, (i - 1) / AUTO_RATE);
     }
