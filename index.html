@@ -1846,12 +1846,16 @@ function hit(x, y) {
   }
   return best ? best.k : null;
 }
+// A clicked note glides to the home ring, where the arrow keys and the wheel bring notes too.
+// Like a jump, it doesn't sound the notes in between.
+function bringToFront(k) { goTo(k, 7); if (reduceMotion) S.z = S.zT; }
 function onNoteClick(k) {
   cancelQueued();
   if (S.lens === 'key') { select(k, false, false); setTonic(k, true); }
   else if (S.lens === 'interval') { select(k, false, false); pickInterval(k); }
   else if (S.lens === 'chord') setRoot(k, true);
   else select(k, true);
+  bringToFront(k);
 }
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
