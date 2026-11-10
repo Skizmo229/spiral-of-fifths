@@ -197,7 +197,7 @@
   <div class="row">
     <button id="whyBtn">Why?</button>
     <button id="exploreBtn" class="expBtn" title="Show the Note, Key, Interval, Chord and Tuning tabs">Explore</button>
-    <span id="hint">Scroll or ← → to move one fifth; drag to travel; pinch or the Zoom slider to zoom. Click a note, or press Enter, to hear it. The tabs explore keys, intervals, chords and tunings.</span>
+    <span id="hint">Scroll or ← → to move one fifth; drag right or up for sharps, left or down for flats; pinch or the Zoom slider to zoom. Click a note, or press Enter, to hear it. The tabs explore keys, intervals, chords and tunings.</span>
   </div>
   <div id="depth"></div>
   <div class="legend"><span>flats</span><span class="bar"></span><span>sharps</span></div>
@@ -398,7 +398,7 @@
     <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths. With Auto-play on, jumps sound only the note you land on. The arrow keys carry on from the note you clicked last.</li>
     <li><b>Instrument</b> and <b>Volume</b>, in the bottom bar: the sound notes are played with, and how loud. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
-    <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
+    <li><b>Drag</b> right or up to travel outward through the sharps, left or down to travel inward through the flats. It moves at the same speed wherever you drag, and settles on a note when you let go. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
     <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>R</b> equal temperament as one circle ↔ rings · <b>1</b>–<b>5</b> switch tabs · <b>I</b> close or bring back the title panel · <b>Esc</b> close this panel.</li>
     <li>Notes that pop up go away by themselves. To clear one sooner, tap it or press <b>Esc</b>.</li>
     <li>Your tuning, tab, zoom, key and chord are remembered for next time. <button id="resetAll" style="margin-top:4px">Reset everything</button></li>
@@ -2000,10 +2000,14 @@ function onNoteClick(k) {
   else select(k, true);
   bringToFront(k);
 }
+// Dragging travels one fifth for every DRAG_PX pixels, the same wherever on the screen you drag:
+// right or up goes outward through the sharps, left or down inward through the flats. Each drag
+// follows whichever way it starts out, across or up and down.
+const DRAG_PX = 28;
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (pointers.size === 1) gesture = { moved: 0 };
+  if (pointers.size === 1) gesture = { moved: 0, axis: null, ax: 0, ay: 0, sx: 0, sy: 0 };
   else if (gesture) gesture.moved = 999;
   stopFly();
 });
@@ -2030,11 +2034,13 @@ cv.addEventListener('pointermove', e => {
   noteTip.classList.remove('show');
   const prev = pointers.get(e.pointerId), cur = { x: e.clientX, y: e.clientY };
   let dz = 0;
-  if (pointers.size === 1) {
-    const r0 = Math.hypot(prev.x - CX, prev.y - CY), r1 = Math.hypot(cur.x - CX, cur.y - CY);
-    if (r0 > 14 && r1 > 14) dz = S.gT > 0.5
-      ? -tune.lap * (r1 - r0) / (RGAP * R0)                // rings: pull the next ring in, or push it out
-      : -tune.lap * Math.log(r1 / r0) / LNG;               // grab the spiral and stretch it
+  if (pointers.size === 1 && gesture) {
+    const dx = cur.x - prev.x, dy = cur.y - prev.y, g = gesture;
+    if (g.axis) dz = (g.axis === 'x' ? dx : -dy) / DRAG_PX;
+    else {
+      g.ax += Math.abs(dx); g.ay += Math.abs(dy); g.sx += dx; g.sy += dy;
+      if (g.ax + g.ay > 6) { g.axis = g.ax >= g.ay ? 'x' : 'y'; dz = (g.axis === 'x' ? g.sx : -g.sy) / DRAG_PX; }
+    }
   } else if (pointers.size === 2) {
     // two fingers: pinch to zoom
     const other = [...pointers.entries()].find(([id]) => id !== e.pointerId)[1];
@@ -2059,6 +2065,7 @@ function endPointer(e) {
       const k = hit(e.clientX, e.clientY);
       if (k !== null) { onNoteClick(k); S.anchor = k; }
     }
+    if (gesture && gesture.dragging) S.zT = Math.round(S.zT);   // settle on a note, as the wheel and arrow keys do
     gesture = null; cv.classList.remove('drag');
   }
 }
