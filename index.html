@@ -541,7 +541,8 @@ const S = {
   t: 0, tT: 0,                // 0 = spiral, 1 = closed circle (when the tuning closes)
   sel: 0, hover: null,
   fly: 0,
-  autoplay: false, userDriven: false, lastK: 0, barber: false, jumping: false, anchor: null,
+  autoplay: true,             // auto-play starts on, unless you turned it off last visit
+  userDriven: false, lastK: 0, barber: false, jumping: false, anchor: null,
   lens: 'note',
   pulses: [],
 };
@@ -890,8 +891,21 @@ let instrument = INSTRUMENTS[0];
 
 let AC = null, master = null, volume = 1;
 const masterLevel = () => 0.9 * volume * volume;    // squared, so the slider feels even to the ear
+// Browsers allow sound only after a click, tap or key press, and scrolling doesn't count. Until then
+// nothing is scheduled, so notes scrolled past don't pile up and all sound at once on the first click.
+const UA = navigator.userActivation;
+let canSound = !!(UA && UA.hasBeenActive), toldToClick = false;
+function wake() {
+  if (UA && !UA.isActive) return;
+  canSound = true; audio();
+}
+for (const ev of ['pointerdown', 'pointerup', 'keydown', 'touchend']) addEventListener(ev, wake, true);
 function audio() {
   if (!AC) {
+    if (!canSound) {
+      if (!toldToClick) { toldToClick = true; caption('Click anywhere, or press a key, to turn the sound on.', 5000); }
+      return null;
+    }
     const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
     AC = new Ctx();
     const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
@@ -1580,7 +1594,7 @@ function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT,
-        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume,
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume, auto: S.autoplay,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
   }, 300);
@@ -1601,6 +1615,7 @@ function restore() {
   if (s.introMin === true) setIntroMin(true);
   if (typeof s.inst === 'string') setInstrument(s.inst);
   if (num(s.vol, 0, 1)) setVolume(s.vol);
+  if (typeof s.auto === 'boolean') S.autoplay = s.auto;
   restoring = false;
   return ['note', 'key', 'interval', 'chord', 'tuning'].includes(s.lens) ? s.lens : null;
 }
@@ -1657,10 +1672,12 @@ $('instrument').addEventListener('change', e => {
   if (instByMouse) e.target.blur();
   instByMouse = false;
 });
-$('auto').onclick = () => {
-  S.autoplay = !S.autoplay;
+function showAuto() {
   $('auto').classList.toggle('on', S.autoplay);
   $('auto').textContent = S.autoplay ? 'Auto-play on' : 'Auto-play';
+}
+$('auto').onclick = () => {
+  S.autoplay = !S.autoplay; showAuto(); save();
   if (S.autoplay) {
     S.lastK = Math.round(S.z); autoNote(S.lastK);
     if (!S.barber) caption(`Auto-play on: every note plays as you scroll past it. One scroll tick = one fifth.`, 5000);
@@ -1988,6 +2005,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 const savedLens = restore();
+showAuto();
 applyTuning();
 if (savedLens && savedLens !== 'note') { setLens(savedLens); if (innerWidth < 760) setExplore(false); }
 if (savedLens === 'chord') select(CH.root, false, false);
