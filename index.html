@@ -376,7 +376,7 @@
 
   <h3>Controls</h3>
   <ul>
-    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths. With Auto-play on, jumps sound only the note you land on.</li>
+    <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths. With Auto-play on, jumps sound only the note you land on. The arrow keys carry on from the note you clicked last.</li>
     <li><b>Instrument</b>, in the bottom bar: the sound notes are played with. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
@@ -544,7 +544,7 @@ const S = {
   mag: 1, magT: 1,
   sel: 0, hover: null,
   fly: 0,
-  autoplay: false, userDriven: false, lastK: 0, barber: false, jumping: false,
+  autoplay: false, userDriven: false, lastK: 0, barber: false, jumping: false, anchor: null,
   lens: 'note',
   pulses: [],
 };
@@ -997,7 +997,7 @@ function caption(html, ms = 6000) {
 }
 function goTo(z, rate = 5) {
   if (Math.abs(z - S.z) > 60) S.z = z + Math.sign(S.z - z) * 60;   // skip the long way back
-  S.zT = z; S.zRate = rate; S.userDriven = false;
+  S.zT = z; S.zRate = rate; S.userDriven = false; S.anchor = null;
 }
 function ensureVisible(k) { if (Math.abs(k - S.z) > tune.lap * 1.3) goTo(k); }
 
@@ -1490,8 +1490,7 @@ function setLens(id) {
   if (id === 'interval') ensureVisible(IV.a);
   save();
 }
-// After a mouse click, let go of focus, so the arrow keys carry on moving the spiral.
-tabBtns.forEach(b => b.addEventListener('click', e => { setLens(b.dataset.tab); if (e.detail) b.blur(); }));
+tabBtns.forEach(b => b.addEventListener('click', () => setLens(b.dataset.tab)));
 function setExplore(open) {
   // the button just pressed is about to disappear, so hand keyboard focus to its counterpart
   const moveFocus = document.activeElement === (open ? $('exploreBtn') : $('exploreClose'));
@@ -1578,7 +1577,7 @@ function stopFly() { S.fly = 0; $('flyIn').classList.remove('on'); $('flyOut').c
 function toggleFly(dir) {
   if (S.fly === dir) { stopFly(); return; }
   seq++; stopFly();
-  S.fly = dir; S.userDriven = true;
+  S.fly = dir; S.userDriven = true; S.anchor = null;
   $(dir > 0 ? 'flyOut' : 'flyIn').classList.add('on');
   caption(closes() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up.`
         : dir > 0 ? `Flying outward. Every lap adds more sharps, and there's no last lap.`
@@ -1734,19 +1733,32 @@ resize();
 if (innerWidth < 760) setExplore(false);
 
 /* ---------- input: wheel, drag, pinch, click, keys ---------- */
-function userMove() {
-  if (S.jumping) { S.z = S.zT; S.lastK = Math.round(S.z); S.jumping = false; }   // finish any jump first
-  stopFly(); S.zRate = 14; S.userDriven = true;
+// After using a button or slider with the mouse, hand the keyboard back to the spiral, so arrows and
+// Enter don't go to that control. (A click made from the keyboard has detail 0, and keeps its focus.)
+document.addEventListener('click', e => {
+  if (e.detail && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+});
+document.querySelectorAll('input[type=range]').forEach(r => r.addEventListener('pointerdown',
+  () => addEventListener('pointerup', () => r.blur(), { once: true, capture: true })));
+function userMove() { stopFly(); S.zRate = 14; S.userDriven = true; }
+// Scrolling or dragging the view: finish any jump first, and forget the clicked note.
+function viewMove() {
+  if (S.jumping) { S.z = S.zT; S.lastK = Math.round(S.z); S.jumping = false; }
+  userMove(); S.anchor = null;
 }
 function stepBy(n) { S.zT = Math.round(S.zT) + n; }   // land exactly on a note
 // The note you've moved to. In a closed tuning that's the plainest name for that key, as a click gives.
 function noteHere() { const k = Math.round(S.zT); return S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k; }
-function keyStep(n) { userMove(); stepBy(n); if (!S.autoplay) select(noteHere(), false, false); }   // auto-play selects as it goes
-// A jump glides past the notes between, so auto-play sounds only the one it lands on.
-function keyJump(n) {
-  userMove(); stepBy(n); S.jumping = true;
-  select(noteHere(), false, false);
-  if (S.autoplay) playNote(noteHere());
+/* Arrow keys carry on from the note you last clicked, even if the view is somewhere else. Getting
+   there counts as a jump: the view glides past the notes between, and auto-play sounds only the one
+   it lands on. A single step just moves along, and auto-play selects each note as it passes. */
+function keyMove(n, jump = false) {
+  userMove();
+  if (S.anchor !== null) { S.zT = S.anchor; S.anchor = null; jump = true; }
+  stepBy(n);
+  S.jumping = jump = jump || S.jumping;
+  if (jump) { select(noteHere(), false, false); if (S.autoplay) playNote(noteHere()); }
+  else if (!S.autoplay) select(noteHere(), false, false);
 }
 
 // Mouse wheel: exactly one fifth per notch (the smallest notch-sized delta seen counts as one notch;
@@ -1758,7 +1770,6 @@ cv.addEventListener('wheel', e => {
   e.preventDefault(); showTip(null);
   const d = e.deltaY; if (!d) return;
   if (e.ctrlKey) { setZoom(S.zlT - clamp(d, -50, 50) * 0.012); return; }
-  userMove();
   let steps = 0;
   if (e.deltaMode === 0 && Math.abs(d) < 40) {
     swipeAcc += d;
@@ -1769,7 +1780,10 @@ cv.addEventListener('wheel', e => {
     steps = Math.sign(d) * Math.max(1, Math.round(a / notchSize[m]));
     swipeAcc = 0;
   }
-  if (steps) stepBy(clamp(steps, -tune.lap, tune.lap));
+  if (!steps) return;
+  steps = clamp(steps, -tune.lap, tune.lap);
+  if (S.autoplay && S.anchor !== null) keyMove(steps);
+  else { viewMove(); stepBy(steps); }
 }, { passive: false });
 
 const pointers = new Map();
@@ -1794,7 +1808,7 @@ cv.addEventListener('pointerdown', e => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) gesture = { moved: 0 };
   else if (gesture) gesture.moved = 999;
-  userMove();
+  stopFly();
 });
 // hover tooltip: names the note under the mouse (handy for the tiny ones near the centre)
 const noteTip = $('noteTip');
@@ -1831,6 +1845,7 @@ cv.addEventListener('pointermove', e => {
   if (gesture) {
     gesture.moved += Math.hypot(cur.x - prev.x, cur.y - prev.y);
     if (gesture.moved > 6) {
+      if (!gesture.dragging) { gesture.dragging = true; viewMove(); }
       cv.classList.add('drag'); S.zT += dz;
       if (!S.autoplay) S.z += dz;   // with auto-play on, the view follows at note speed instead
     }
@@ -1843,7 +1858,7 @@ function endPointer(e) {
   if (pointers.size === 0) {
     if (gesture && gesture.moved <= 6 && e.type === 'pointerup') {
       const k = hit(e.clientX, e.clientY);
-      if (k !== null) onNoteClick(k);
+      if (k !== null) { onNoteClick(k); S.anchor = k; }
     }
     gesture = null; cv.classList.remove('drag');
   }
@@ -1862,13 +1877,13 @@ addEventListener('keydown', e => {
     return;
   }
   switch (e.key) {
-    case 'ArrowRight': if (e.shiftKey) keyJump(tune.lap); else keyStep(1); break;
-    case 'ArrowLeft':  if (e.shiftKey) keyJump(-tune.lap); else keyStep(-1); break;
-    case 'ArrowUp':    keyJump(12); break;
-    case 'ArrowDown':  keyJump(-12); break;
+    case 'ArrowRight': if (e.shiftKey) keyMove(tune.lap, true); else keyMove(1); break;
+    case 'ArrowLeft':  if (e.shiftKey) keyMove(-tune.lap, true); else keyMove(-1); break;
+    case 'ArrowUp':    keyMove(12, true); break;
+    case 'ArrowDown':  keyMove(-12, true); break;
     case 'Enter': case ' ':
       if (e.target !== cv && e.target !== document.body) return;
-      e.preventDefault(); onNoteClick(noteHere());
+      e.preventDefault(); onNoteClick(S.anchor !== null ? S.anchor : noteHere());
       break;
     case 'a': $('auto').click(); break;
     case 'b': $('barber').click(); break;
