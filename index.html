@@ -370,14 +370,14 @@
   <ul>
     <li><b>Key:</b> a scale is a run of neighbouring notes on the spiral: 5 for pentatonic, 7 for major, minor and the modes, 12 for chromatic. Slide it along and the key signature changes one sharp or flat at a time.</li>
     <li><b>Interval:</b> every interval is a fixed number of fifths. A major third is always 4 steps out and a minor third 3 steps in, whatever note you start on.</li>
-    <li><b>Chord:</b> every chord type is a fixed shape, and changing key just slides it along the spiral. The chord buttons build on whichever note is selected.</li>
+    <li><b>Chord:</b> every chord type is a fixed shape, and changing key just slides it along the spiral. The chord buttons build on whichever note is selected, and Flats and Sharps play the chord on every note they pass.</li>
     <li><b>Tuning:</b> change the size of the fifth and watch the spiral open, close, or drift the other way.</li>
   </ul>
 
   <h3>Controls</h3>
   <ul>
     <li><b>Scroll wheel</b> or <b>← →</b>: move one fifth. <b>Shift + ← →</b>: one whole lap. <b>↑ ↓</b>: jump 12 fifths. With Auto-play on, jumps sound only the note you land on. The arrow keys carry on from the note you clicked last.</li>
-    <li><b>Instrument</b>, in the bottom bar: the sound notes are played with. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
+    <li><b>Instrument</b> and <b>Volume</b>, in the bottom bar: the sound notes are played with, and how loud. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
     <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
@@ -411,6 +411,10 @@
   <span class="sep"></span>
   <label class="group mag" title="Choose the sound notes are played with">Instrument
     <select id="instrument" aria-label="Instrument"></select>
+  </label>
+  <label class="group mag" title="Volume">Volume
+    <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" aria-valuetext="100%">
+    <output id="volV">100%</output>
   </label>
   <span class="sep"></span>
   <div class="group">
@@ -884,13 +888,14 @@ const INSTRUMENTS = [
 const SINE = { attack: 0.025, sustain: 0.55, decay: 0.3, release: 0.14, level: 1, layers: [{ amps: [1] }] };
 let instrument = INSTRUMENTS[0];
 
-let AC = null, master = null, muted = false;
+let AC = null, master = null, muted = false, volume = 1;
+const masterLevel = () => muted ? 0 : 0.9 * volume * volume;    // squared, so the slider feels even to the ear
 function audio() {
   if (!AC) {
     const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
     AC = new Ctx();
     const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
-    master = AC.createGain(); master.gain.value = muted ? 0 : 0.9;
+    master = AC.createGain(); master.gain.value = masterLevel();
     master.connect(comp); comp.connect(AC.destination);
     for (const ins of [...INSTRUMENTS, SINE]) for (const layer of ins.layers) {
       const im = new Float32Array(layer.amps.length + 1), re = new Float32Array(layer.amps.length + 1);
@@ -1575,7 +1580,7 @@ function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT,
-        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id,
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
   }, 300);
@@ -1595,6 +1600,7 @@ function restore() {
   if (s.iv && int(s.iv.a, -500, 500) && int(s.iv.b, -500, 500)) { IV.a = s.iv.a; IV.b = s.iv.b; }
   if (s.introMin === true) setIntroMin(true);
   if (typeof s.inst === 'string') setInstrument(s.inst);
+  if (num(s.vol, 0, 1)) setVolume(s.vol);
   restoring = false;
   return ['note', 'key', 'interval', 'chord', 'tuning'].includes(s.lens) ? s.lens : null;
 }
@@ -1611,8 +1617,14 @@ function toggleFly(dir) {
   S.fly = dir; S.userDriven = true; S.anchor = null;
   $(dir > 0 ? 'flyOut' : 'flyIn').classList.add('on');
   caption(closes() ? `In ${tuningName()} the spiral has closed into a circle, so travelling just goes round the same ${tune.lap} keys. Switch to pure fifths to see it open up.`
+        : S.lens === 'chord' ? `Flying ${dir > 0 ? 'outward' : 'inward'}, playing a ${chordType().name} chord on every note it passes.`
         : dir > 0 ? `Flying outward. Every lap adds more sharps, and there's no last lap.`
                   : `Flying inward. Every lap adds more flats, and you never reach the centre.`, 5000);
+}
+// On the Chord tab, Flats and Sharps play the chosen chord on every note they pass.
+function flyChord(k) {
+  setRoot(S.tT > 0.5 ? slotNames[mod(k, tune.lap)][0] : k, false);
+  playChord(false, 0.6);
 }
 $('flyIn').onclick = () => toggleFly(-1);
 $('flyOut').onclick = () => toggleFly(1);
@@ -1622,8 +1634,15 @@ $('stack').onclick = stackLap;
 $('mute').onclick = () => {
   muted = !muted; $('mute').textContent = muted ? 'Sound off' : 'Sound on';
   $('mute').classList.toggle('on', muted);
-  if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, AC.currentTime, 0.02);
+  if (master) master.gain.setTargetAtTime(masterLevel(), AC.currentTime, 0.02);
 };
+function setVolume(v) {
+  volume = clamp(v, 0, 1);
+  const pct = Math.round(volume * 100);
+  $('vol').value = pct; $('volV').textContent = pct + '%'; $('vol').setAttribute('aria-valuetext', pct + '%');
+  if (master) master.gain.setTargetAtTime(masterLevel(), AC.currentTime, 0.02);
+}
+$('vol').oninput = e => { if (muted) $('mute').click(); setVolume(e.target.value / 100); save(); };
 function setInstrument(id) {
   instrument = INSTRUMENTS.find(i => i.id === id) || INSTRUMENTS[0];
   $('instrument').value = instrument.id;
@@ -1957,7 +1976,8 @@ function frame(now) {
 
   const kNow = Math.round(S.z);
   if (kNow !== S.lastK) {
-    if (S.autoplay && S.userDriven && !S.jumping) {
+    if (S.fly && S.lens === 'chord') flyChord(kNow);
+    else if (S.autoplay && S.userDriven && !S.jumping) {
       const dir = Math.sign(kNow - S.lastK), n = Math.abs(kNow - S.lastK);
       for (let i = 1; i <= n; i++) autoNote(S.lastK + dir * i, dir, (i - 1) / AUTO_RATE);
     }
