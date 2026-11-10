@@ -39,13 +39,21 @@
   .acc{font-family:var(--sym);font-weight:400}
   sup{font-size:.55em;font-weight:700;margin-left:.04em;line-height:0}
   .dim{color:var(--muted)}
-  #exploreBtn{display:none}
-  body.exp-closed #exploreBtn{display:inline-block}
+  .expBtn{display:none}
+  body.exp-closed .expBtn{display:inline-block}
   #explore.closed{display:none}
   .mini{position:absolute;top:8px;right:8px;width:26px;height:26px;padding:0;border-radius:8px;font-size:15px;line-height:1;color:var(--muted)}
+  #introMin{right:38px}
+  #intro h1{padding-right:56px}
   #intro.min p,#intro.min .legend,#intro.min #hint{display:none}
-  #intro.min h1{padding-right:30px}
   #intro.min #depth{margin-top:8px}
+  /* the title panel closed all the way: a small button in its corner brings it back */
+  #intro.closed{display:none}
+  #corner{position:fixed;top:16px;left:16px;display:none;gap:6px;z-index:3}
+  body.intro-closed #corner{display:flex}
+  #corner button{background:var(--panel);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);height:36px;padding:0 13px}
+  #corner button:hover{background:rgba(40,42,62,.9)}
+  #introOpen{width:36px;padding:0!important;border-radius:50%;font-family:var(--serif);font-style:italic;font-weight:700;font-size:18px}
   #noteTip{position:fixed;left:0;top:0;pointer-events:none;z-index:6;padding:6px 10px;font-size:12px;line-height:1.35;
     background:rgba(8,9,18,.94);border:1px solid rgba(255,255,255,.14);border-radius:9px;opacity:0;transition:opacity .12s;white-space:nowrap}
   #noteTip b{font-family:var(--serif);font-size:16px;font-weight:600}
@@ -124,9 +132,12 @@
 
   /* caption */
   #caption{position:fixed;left:50%;bottom:calc(var(--ctl-h) + 28px);transform:translate(-50%,8px);
-    max-width:min(640px,calc(100vw - 32px));text-align:center;font-size:14.5px;line-height:1.5;padding:10px 16px;
-    opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;z-index:4}
-  #caption.show{opacity:1;transform:translate(-50%,0)}
+    width:max-content;max-width:min(640px,calc(100vw - 32px));text-align:center;font-size:14.5px;line-height:1.5;padding:10px 40px 10px 16px;
+    opacity:0;visibility:hidden;transition:opacity .35s,transform .35s,visibility 0s .35s;pointer-events:none;z-index:4}
+  #caption.show{opacity:1;visibility:visible;transform:translate(-50%,0);transition-delay:0s;pointer-events:auto;cursor:pointer}
+  #capClose{position:absolute;top:50%;right:7px;transform:translateY(-50%);width:26px;height:26px;padding:0;border-radius:8px;
+    font-size:13px;line-height:1;color:var(--muted)}
+  #caption:hover #capClose{background:rgba(255,255,255,.12);color:var(--text)}
 
   /* explainer drawer */
   #why{top:16px;left:16px;bottom:calc(var(--ctl-h) + 30px);width:min(460px,calc(100vw - 32px));padding:20px 22px;
@@ -171,7 +182,7 @@
     .group{flex-wrap:wrap;justify-content:center}
   }
 </style>
-<noscript><style>#cv,#explore,#why,#caption,#noteTip,#controls,#intro .row,#depth,.legend,#introMin{display:none}</style></noscript>
+<noscript><style>#cv,#explore,#why,#caption,#noteTip,#controls,#intro .row,#depth,.legend,#introMin,#introClose,#corner{display:none}</style></noscript>
 </head>
 <body>
 <canvas id="cv" tabindex="0" role="slider" aria-label="Spiral of fifths: the note you are on" aria-orientation="horizontal" aria-valuemin="-100000" aria-valuemax="100000" aria-valuenow="0" aria-valuetext="C, home" aria-describedby="cvHelp"></canvas>
@@ -179,17 +190,22 @@
 
 <section id="intro" class="panel">
   <button class="mini" id="introMin" title="Show less" aria-label="Collapse this panel">–</button>
+  <button class="mini" id="introClose" title="Close (I brings it back)" aria-label="Close this panel">✕</button>
   <h1>The Circle of Fifths Is a Spiral</h1>
   <noscript><p><b>This page needs JavaScript</b> to draw the spiral and play its notes. Turn it on and reload to explore.</p></noscript>
   <p>Stack pure fifths from C and you never get back to C. Twelve steps lands you on <b>B<span class="acc">♯</span></b>, which is a slightly higher note. Keep going and the spiral winds <b>outward</b> through more and more sharps. Go the other way and it winds <b>inward</b> through more and more flats. Neither end ever stops.</p>
   <div class="row">
     <button id="whyBtn">Why?</button>
-    <button id="exploreBtn" title="Show the Note, Key, Interval, Chord and Tuning tabs">Explore</button>
+    <button id="exploreBtn" class="expBtn" title="Show the Note, Key, Interval, Chord and Tuning tabs">Explore</button>
     <span id="hint">Scroll or ← → to move one fifth; drag to travel; pinch or the Zoom slider to zoom. Click a note, or press Enter, to hear it. The tabs explore keys, intervals, chords and tunings.</span>
   </div>
   <div id="depth"></div>
   <div class="legend"><span>flats</span><span class="bar"></span><span>sharps</span></div>
 </section>
+<div id="corner">
+  <button id="introOpen" title="Show the title panel, with Why? (I)" aria-label="Show the title panel">i</button>
+  <button id="exploreBtn2" class="expBtn" title="Show the Note, Key, Interval, Chord and Tuning tabs">Explore</button>
+</div>
 
 <aside id="explore" class="panel" aria-label="Explore notes, keys, intervals, chords and tunings">
   <div class="tabs">
@@ -383,7 +399,8 @@
     <li><b>Instrument</b> and <b>Volume</b>, in the bottom bar: the sound notes are played with, and how loud. Every instrument is in exact tune, with no vibrato, so small tuning differences stay easy to hear. Barber pole and the harmonics above always use sine waves.</li>
     <li><b>Enter</b> or <b>Space</b>: play the note you've moved to, the same as clicking it.</li>
     <li><b>Drag</b> outward or inward to travel. <b>Pinch</b>, the <b>Zoom</b> slider or <b>+ / −</b> to zoom; <b>0</b> resets the zoom.</li>
-    <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>R</b> equal temperament as one circle ↔ rings · <b>1</b>–<b>5</b> switch tabs · <b>Esc</b> close this panel.</li>
+    <li><b>H</b> home · <b>A</b> auto-play · <b>B</b> barber pole · <b>T</b> pure ↔ equal temperament · <b>R</b> equal temperament as one circle ↔ rings · <b>1</b>–<b>5</b> switch tabs · <b>I</b> close or bring back the title panel · <b>Esc</b> close this panel.</li>
+    <li>Notes that pop up go away by themselves. To clear one sooner, tap it or press <b>Esc</b>.</li>
     <li>Your tuning, tab, zoom, key and chord are remembered for next time. <button id="resetAll" style="margin-top:4px">Reset everything</button></li>
   </ul>
 
@@ -392,7 +409,7 @@
   <p class="dim" style="margin-top:14px;font-size:12px">Sound: notes are played near middle C (C4 = 261.63 Hz).</p>
 </aside>
 
-<div id="caption" class="panel" role="status"></div>
+<div id="caption" class="panel"><div id="capText" role="status"></div><button id="capClose" title="Dismiss (Esc)" aria-label="Dismiss this note">✕</button></div>
 <div id="noteTip" aria-hidden="true"></div>
 
 <section id="controls" class="panel" aria-label="Spiral controls">
@@ -1070,13 +1087,27 @@ function playNote(k, d = 0, when = 0) {
 function pulse(k, delayMs = 0) { S.pulses.push({ k, t0: performance.now() + delayMs }); }
 const midHz = (f, lo = 190, hi = 380) => { while (f > hi) f /= 2; while (f < lo) f *= 2; return f; };
 
-let seq = 0;
-function later(ms, fn) { const id = seq; setTimeout(() => { if (id === seq) fn(); }, ms); }
+let seq = 0, seqNow = -1;               // seqNow: the sequence whose step is running right now, if any
+function later(ms, fn) {
+  const id = seq;
+  setTimeout(() => { if (id === seq) { seqNow = id; try { fn(); } finally { seqNow = -1; } } }, ms);
+}
 let capTimer = 0, capSticky = false;      // sticky: a sequence's running commentary, with no timeout
+let capHush = -1;                         // a sequence whose note you dismissed: the rest of its notes stay hidden
 function caption(html, ms = 6000) {
-  const c = $('caption'); c.innerHTML = html; c.classList.add('show'); capSticky = !ms;
+  if (seqNow >= 0 && seqNow === capHush) return;
+  const c = $('caption'); $('capText').innerHTML = html; c.classList.add('show'); capSticky = !ms;
   clearTimeout(capTimer); if (ms) capTimer = setTimeout(() => c.classList.remove('show'), ms);
 }
+// Tap a note (or its ✕, or press Esc) to take it down now.
+function dismissCaption() {
+  const c = $('caption');
+  if (!c.classList.contains('show')) return false;
+  if (c.contains(document.activeElement)) cv.focus();
+  clearTimeout(capTimer); c.classList.remove('show'); capSticky = false; capHush = seq;
+  return true;
+}
+$('caption').addEventListener('click', dismissCaption);
 // Cancel anything still queued (a progression, a scale…) and take down its running commentary.
 function cancelQueued() {
   seq++;
@@ -1620,17 +1651,21 @@ function setLens(id) {
   save();
 }
 tabBtns.forEach(b => b.addEventListener('click', () => setLens(b.dataset.tab)));
+const introClosed = () => $('intro').classList.contains('closed');
+// the Explore button that's on screen: in the title panel, or in its corner when that's closed
+const exploreBtn = () => $(introClosed() ? 'exploreBtn2' : 'exploreBtn');
 function setExplore(open) {
   // the button just pressed is about to disappear, so hand keyboard focus to its counterpart
-  const moveFocus = document.activeElement === (open ? $('exploreBtn') : $('exploreClose'));
+  const a = document.activeElement;
+  const moveFocus = open ? a && a.classList.contains('expBtn') : a === $('exploreClose');
   $('explore').classList.toggle('closed', !open);
   document.body.classList.toggle('exp-closed', !open);
   if (open && S.lens === 'tuning') drawMiss();
-  if (moveFocus) (open ? tabBtns.find(b => b.classList.contains('on')) : $('exploreBtn')).focus();
+  if (moveFocus) (open ? tabBtns.find(b => b.classList.contains('on')) : exploreBtn()).focus();
 }
 let expUserClosed = false;     // once you close the panel, clicking notes won't pop it open again
 $('exploreClose').onclick = () => { expUserClosed = true; setExplore(false); };
-$('exploreBtn').onclick = () => { expUserClosed = false; setExplore(true); };
+$('exploreBtn').onclick = $('exploreBtn2').onclick = () => { expUserClosed = false; setExplore(true); };
 function setIntroMin(min) {
   $('intro').classList.toggle('min', min);
   $('introMin').textContent = min ? '+' : '–';
@@ -1639,6 +1674,16 @@ function setIntroMin(min) {
   resize();
 }
 $('introMin').onclick = () => { setIntroMin(!$('intro').classList.contains('min')); save(); };
+// Close the title panel all the way, leaving just a small button in its corner to bring it back.
+function setIntroClosed(closed) {
+  const a = document.activeElement, moveFocus = a === $('introClose') || a === $('introOpen');
+  $('intro').classList.toggle('closed', closed);
+  document.body.classList.toggle('intro-closed', closed);
+  if (moveFocus) $(closed ? 'introOpen' : 'introClose').focus();
+  resize();
+}
+$('introClose').onclick = () => { setIntroClosed(true); save(); };
+$('introOpen').onclick = () => { setIntroClosed(false); save(); };
 
 $('pure').onclick = () => applyPreset('pyth');
 $('temp').onclick = () => { stopFly(); drawAs(false, '12'); const p = exactPreset(); caption(`<b>${p.name}.</b> ${p.blurb}`, 9000); };
@@ -1674,7 +1719,7 @@ function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT,
-        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id, vol: volume, auto: S.autoplay, rings: S.rings,
+        key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), introClosed: introClosed(), inst: instrument.id, vol: volume, auto: S.autoplay, rings: S.rings,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
   }, 300);
@@ -1693,6 +1738,7 @@ function restore() {
   if (s.chord && CHORDS.some(c => c.id === s.chord.type) && int(s.chord.root, -500, 500)) Object.assign(CH, s.chord);
   if (s.iv && int(s.iv.a, -500, 500) && int(s.iv.b, -500, 500)) { IV.a = s.iv.a; IV.b = s.iv.b; }
   if (s.introMin === true) setIntroMin(true);
+  if (s.introClosed === true) setIntroClosed(true);
   if (typeof s.inst === 'string') setInstrument(s.inst);
   if (num(s.vol, 0, 1)) setVolume(s.vol);
   if (typeof s.auto === 'boolean') S.autoplay = s.auto;
@@ -1860,7 +1906,7 @@ function setWhy(open) {
   why.classList.toggle('open', open); why.setAttribute('aria-hidden', String(!open));
   why.inert = !open;                        // while it's off-screen, Tab must not wander into it
   if (open && !wasOpen) $('whyClose').focus({ preventScroll: true });
-  if (!open && wasOpen) $('whyBtn').focus();
+  if (!open && wasOpen) (introClosed() ? cv : $('whyBtn')).focus();
 }
 $('whyBtn').onclick = () => setWhy(!why.classList.contains('open'));
 $('whyClose').onclick = () => setWhy(false);
@@ -2046,6 +2092,7 @@ addEventListener('keydown', e => {
       else $(S.rings ? 'rings' : 'temp').click();
       break;
     case 'r': toggleRings(); break;
+    case 'i': setIntroClosed(!introClosed()); save(); break;
     case '1': setLens('note'); break;
     case '2': setLens('key'); break;
     case '3': setLens('interval'); break;
@@ -2054,7 +2101,7 @@ addEventListener('keydown', e => {
     case '+': case '=': setZoom(S.zlT + 0.25); break;
     case '-': case '_': setZoom(S.zlT - 0.25); break;
     case '0': setZoom(0); break;
-    case 'Escape': setWhy(false); break;
+    case 'Escape': if (why.classList.contains('open')) setWhy(false); else dismissCaption(); break;
     default: return;
   }
 });
