@@ -359,7 +359,7 @@
 
   <h3>Reading the picture</h3>
   <ul>
-    <li><b>Going around</b> is distance travelled in fifths. With pure fifths one step is 30.08°, a hair more than a twelfth of a turn, so a lap of 12 comes to 361°. Each note sits about 1° past its partner one lap in. That sliver is the comma, and the <b>comma magnifier</b> exaggerates it.</li>
+    <li><b>Going around</b> is distance travelled in fifths. With pure fifths one step is 30.08°, a hair more than a twelfth of a turn, so a lap of 12 comes to 361°. Each note sits about 1° past its partner one lap in. That sliver is the comma.</li>
     <li><b>Out and in</b> are sharps and flats. It's a logarithmic spiral: every lap is the same shape at a different size, so there are infinitely many laps in both directions and it never reaches the centre.</li>
     <li><b>Colour:</b> ivory for naturals, warm for sharps, cool for flats. Deeper colour means more accidentals. <span class="acc">♯</span><sup>5</sup> means five sharps.</li>
     <li><b>Gold rings</b> mark the notes a whole lap away from the selected one. With 12 notes per lap they share its piano key: same key, different notes.</li>
@@ -409,18 +409,13 @@
     <output id="zoomV">×1.0</output>
   </label>
   <span class="sep"></span>
-  <label class="group mag" title="Exaggerate the comma so the drift is easier to see">Comma magnifier
-    <input id="mag" type="range" min="1" max="20" step="1" value="1" aria-label="Comma magnifier" aria-valuetext="1 times">
-    <output id="magV">×1</output>
-  </label>
-  <span class="sep"></span>
   <label class="group mag" title="Choose the sound notes are played with">Instrument
     <select id="instrument" aria-label="Instrument"></select>
   </label>
   <span class="sep"></span>
   <div class="group">
-    <button id="comma" title="Play C, then the note one lap later, then both together">Hear the comma</button>
-    <button id="stack" title="Climb one lap of fifths from C">Stack 12 fifths</button>
+    <button id="comma" title="Play the selected note, then the note one lap later, then both together">Hear the comma</button>
+    <button id="stack" title="Climb one lap of fifths from the selected note">Stack 12 fifths</button>
     <button id="auto" title="Play each note as you scroll past it (A)">Auto-play</button>
     <button id="barber" title="Auto-play with Shepard tones: the pitch seems to rise (or fall) forever, like a barber's pole (B)">Barber pole</button>
     <button id="mute" title="Sound on/off">Sound on</button>
@@ -541,7 +536,6 @@ const S = {
   z: 30, zT: 0, zRate: 1.8,   // z: which note sits on the home ring (intro: unwinds from 30 to 0)
   zl: 0, zlT: 0,              // zoom, as a power of two (0 = ×1, 1 = ×2, −1 = ×½)
   t: 0, tT: 0,                // 0 = spiral, 1 = closed circle (when the tuning closes)
-  mag: 1, magT: 1,
   sel: 0, hover: null,
   fly: 0,
   autoplay: false, userDriven: false, lastK: 0, barber: false, jumping: false, anchor: null,
@@ -584,7 +578,7 @@ addEventListener('resize', () => { resize(); drawMiss(); });
 // angle per fifth: one lap = `lap` fifths ≈ a whole number of octaves; the leftover is the drift
 function computeStep() {
   const base = 360 / tune.lap, real = 360 * tune.fifth / (1200 * lapOct());
-  STEP = base + (1 - S.t) * S.mag * (real - base);
+  STEP = base + (1 - S.t) * (real - base);
 }
 function geom(k) {
   const r = R0 * Math.exp(LNG * (1 - S.t) * (k - S.z) / tune.lap);
@@ -726,7 +720,7 @@ function draw(now) {
 
   // spokes: where the notes would sit if the circle closed (12 per lap = the piano's keys)
   ctx.lineWidth = 1.2;
-  ctx.strokeStyle = `rgba(255,255,255,${((0.1 + 0.05 * smooth(1, 5, S.mag)) * Math.min(1, 12 / L)).toFixed(3)})`;
+  ctx.strokeStyle = `rgba(255,255,255,${(0.1 * Math.min(1, 12 / L)).toFixed(3)})`;
   ctx.beginPath();
   for (let s = 0; s < L; s++) {
     const a = s * 2 * Math.PI / L;
@@ -744,20 +738,23 @@ function draw(now) {
   kLo = Math.floor(kLo); kHi = Math.ceil(kHi);
   VIS = { kLo, kHi };
 
-  // the spiral line: a soft glow pass, then a bright core
+  // the spiral line: a soft glow pass, then a bright core. Each note-to-note stretch is a single
+  // stroke, so the line never overlaps itself (overlaps showed up as beads in the see-through glow);
+  // the joins between stretches sit under the notes.
   if (ft < 1) {
-    ctx.lineCap = 'round';
-    const step = L / 60;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const sub = Math.max(1, Math.ceil(60 / L));          // points per stretch, so it stays a smooth curve
     for (const [wMul, wMin, a] of [[0.085, 2, 0.13], [0.03, 1, 0.85]]) {
-      let p = geom(kLo);
-      for (let k = kLo + step; k <= kHi; k += step) {
-        const q = geom(k);
-        if (q.r > 0.6 && !(Math.max(p.x, q.x) < -50 || Math.min(p.x, q.x) > W + 50 || Math.max(p.y, q.y) < -50 || Math.min(p.y, q.y) > H + 50)) {
-          ctx.strokeStyle = lineColor(k, a * (1 - ft) * Math.min(1, q.r / 6));
-          ctx.lineWidth = Math.max(wMin * Math.min(1, q.r / 20), q.r * wMul * Math.min(1, DOTL / 0.15));
-          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
-        }
-        p = q;
+      for (let k = kLo; k < kHi; k++) {
+        const pts = [];
+        for (let j = 0; j <= sub; j++) pts.push(geom(k + j / sub));
+        const xs = pts.map(p => p.x), ys = pts.map(p => p.y), m = geom(k + 0.5);
+        if (pts[sub].r <= 0.6 || Math.max(...xs) < -50 || Math.min(...xs) > W + 50 || Math.max(...ys) < -50 || Math.min(...ys) > H + 50) continue;
+        ctx.strokeStyle = lineColor(k + 0.5, a * (1 - ft) * Math.min(1, m.r / 6));
+        ctx.lineWidth = Math.max(wMin * Math.min(1, m.r / 20), m.r * wMul * Math.min(1, DOTL / 0.15));
+        ctx.beginPath();
+        pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+        ctx.stroke();
       }
     }
   }
@@ -1467,39 +1464,45 @@ document.querySelectorAll('[data-hp]').forEach(b => b.addEventListener('click', 
 /* =====================================================================
    Demos (one lap of the current tuning)
    ===================================================================== */
+// The selected note, then the note one lap further out, then both. The selection stays put, so
+// pressing it again plays the same pair.
 function hearComma() {
-  cancelQueued(); stopFly(); goTo(0);
-  const L = tune.lap, c = lapComma(), shut = closes();
-  select(L, false);
-  caption(`First <b>C</b>…`, 0);
-  tone(hz(0), 0, 0.85); pulse(0);
+  const k = S.sel, L = tune.lap, c = lapComma(), shut = closes();
+  cancelQueued(); stopFly(); goTo(k);
+  select(k, false);
+  caption(`First <b>${nameHTML(k)}</b>…`, 0);
+  tone(hz(k), 0, 0.85); pulse(k);
   later(1000, () => {
-    tone(hz(L), 0, 0.85); pulse(L);
-    caption(`…then <b>${nameHTML(L)}</b>, ${L} fifths later${shut ? ': exactly the same pitch…' : `: ${Math.abs(c).toFixed(2)} ¢ ${c > 0 ? 'higher' : 'lower'}…`}`, 0);
+    tone(hz(k + L), 0, 0.85); pulse(k + L);
+    caption(`…then <b>${nameHTML(k + L)}</b>, ${L} fifths later${shut ? ': exactly the same pitch…' : `: ${Math.abs(c).toFixed(2)} ¢ ${c > 0 ? 'higher' : 'lower'}…`}`, 0);
   });
   later(2100, () => {
-    tone(hz(0), 0, 2.6); tone(hz(L), 0, 2.6); pulse(0); pulse(L);
-    const beats = Math.abs(hz(L) - hz(0));
+    tone(hz(k), 0, 2.6); tone(hz(k + L), 0, 2.6); pulse(k); pulse(k + L);
+    const beats = Math.abs(hz(k + L) - hz(k));
     caption(shut ? `…and together: one clean note. In ${tuningName()} the circle really does close.`
       : `…and both together. That wobble, about ${beats.toFixed(1)} beats a second, is ${isPyth() && L === 12 ? 'the <b>Pythagorean comma</b>' : 'the gap left over after one lap'}. If the circle really closed, you'd hear one clean note.`, 8000);
   });
 }
+// Climb one lap of fifths from the selected note. The selection comes back to that note at the end,
+// so pressing it again climbs the same lap.
 function stackLap() {
-  cancelQueued(); stopFly(); goTo(0);
-  const L = tune.lap, ms = clamp(5600 / L, 90, 430), chain = [];
+  const k0 = S.sel, L = tune.lap, ms = clamp(5600 / L, 90, 430), chain = [];
+  cancelQueued(); stopFly(); goTo(k0);
   for (let i = 0; i <= L; i++) later(i * ms, () => {
-    tone(hz(i), 0, Math.max(0.25, ms / 1000 * 1.2), 0.18); pulse(i); select(i, false, false);
-    chain.push(i === L ? `<b>${nameHTML(i)}</b>` : nameHTML(i));
+    const k = k0 + i;
+    tone(hz(k), 0, Math.max(0.25, ms / 1000 * 1.2), 0.18); pulse(k); select(k, false, false);
+    chain.push(i === L ? `<b>${nameHTML(k)}</b>` : nameHTML(k));
     caption(chain.slice(-14).join(' → '), 0);
   });
   later((L + 1) * ms + 250, () => {
-    tone(hz(0), 0, 2.8); tone(hz(L), 0, 2.8); pulse(0); pulse(L);
+    const top = k0 + L;
+    tone(hz(k0), 0, 2.8); tone(hz(top), 0, 2.8); pulse(k0); pulse(top); select(k0, false, false);
     const O = lapOct(), c = lapComma();
     caption(isPyth() && L === 12
-      ? `<span class="math">(3/2)<sup>12</sup> ≈ 129.75</span>, but seven octaves are <span class="math">2<sup>7</sup> = 128</span>. Twelve pure fifths overshoot by 23.46 ¢, so you land on <b>B<span class="acc">♯</span></b>, not C. Now hear them together.`
+      ? `<span class="math">(3/2)<sup>12</sup> ≈ 129.75</span>, but seven octaves are <span class="math">2<sup>7</sup> = 128</span>. Twelve pure fifths overshoot by 23.46 ¢, so you land on <b>${nameHTML(top)}</b>, not ${nameHTML(k0)}. Now hear them together.`
       : `${L} fifths of ${tune.fifth.toFixed(2)} ¢ = ${(L * tune.fifth).toFixed(2)} ¢, and ${plural(O, 'octave')} = ${1200 * O} ¢. ` +
-        (closes() ? `They match exactly, so ${nameHTML(L)} <b>is</b> C: the circle closes.`
-                  : `You ${c > 0 ? 'overshoot' : 'fall short'} by ${Math.abs(c).toFixed(2)} ¢, so you land on <b>${nameHTML(L)}</b>, not C. Now hear them together.`), 9000);
+        (closes() ? `They match exactly, so ${nameHTML(top)} <b>is</b> ${nameHTML(k0)}: the circle closes.`
+                  : `You ${c > 0 ? 'overshoot' : 'fall short'} by ${Math.abs(c).toFixed(2)} ¢, so you land on <b>${nameHTML(top)}</b>, not ${nameHTML(k0)}. Now hear them together.`), 9000);
   });
 }
 
@@ -1545,11 +1548,6 @@ $('introMin').onclick = () => { setIntroMin(!$('intro').classList.contains('min'
 
 $('pure').onclick = () => applyPreset('pyth');
 $('temp').onclick = () => { stopFly(); applyPreset('12'); };
-function setMag(v) {
-  S.magT = clamp(Math.round(v), 1, 20); $('mag').value = S.magT; $('magV').textContent = '×' + S.magT;
-  $('mag').setAttribute('aria-valuetext', S.magT + ' times');
-}
-$('mag').oninput = e => { setMag(+e.target.value); save(); };
 
 // zoom: the slider works in powers of two so each step feels the same size, in or out
 const ZMIN = -1.5, ZMAX = 2;
@@ -1574,7 +1572,7 @@ function save() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT, mag: S.magT,
+        fifth: tune.fifth, lap: tune.lap, lens: S.lens, zoom: S.zlT,
         key: KEY, chord: CH, iv: { a: IV.a, b: IV.b }, introMin: $('intro').classList.contains('min'), inst: instrument.id,
       }));
     } catch (_) { /* storage blocked: nothing to remember */ }
@@ -1590,7 +1588,6 @@ function restore() {
   if (num(s.fifth, 680, 725)) tune.fifth = s.fifth;
   if (int(s.lap, 3, 60)) tune.lap = s.lap;
   if (num(s.zoom, ZMIN, ZMAX)) setZoom(s.zoom, true);
-  if (int(s.mag, 1, 20)) { setMag(s.mag); S.mag = S.magT; }
   if (s.key && [5, 7, 12].includes(s.key.size) && int(s.key.tonic, -500, 500) && int(s.key.pos, 0, s.key.size - 1)) Object.assign(KEY, s.key);
   if (s.chord && CHORDS.some(c => c.id === s.chord.type) && int(s.chord.root, -500, 500)) Object.assign(CH, s.chord);
   if (s.iv && int(s.iv.a, -500, 500) && int(s.iv.b, -500, 500)) { IV.a = s.iv.a; IV.b = s.iv.b; }
@@ -1953,7 +1950,6 @@ function frame(now) {
   if (Math.abs(S.zT - S.z) < 1e-4) S.z = S.zT;
   S.t += (S.tT - S.t) * (1 - Math.exp(-dt * 3.2));
   if (Math.abs(S.tT - S.t) < 1e-4) S.t = S.tT;
-  S.mag += (S.magT - S.mag) * (1 - Math.exp(-dt * 8));
   S.zl += (S.zlT - S.zl) * (1 - Math.exp(-dt * 12));
   if (Math.abs(S.zlT - S.zl) < 1e-4) S.zl = S.zlT;
 
